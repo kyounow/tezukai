@@ -143,7 +143,11 @@ body {
   font-size: 0.8rem;
 }
 .count__label {
+  color: var(--fg);
+}
+.count__hint {
   color: var(--muted);
+  font-size: 0.72rem;
 }
 .count__input {
   padding: 0.4rem 0.5rem;

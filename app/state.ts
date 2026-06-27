@@ -12,6 +12,8 @@ export interface FormState {
   spouseSalaryIncome: number
   /** 配偶者が70歳以上か。 */
   spouseElderly: boolean
+  /** 年少扶養親族（16歳未満）の人数。扶養控除0だが住民税の非課税判定に影響。 */
+  depUnder16: number
   /** 一般の扶養親族（16〜18・23〜69歳）の人数。 */
   depGeneral: number
   /** 特定扶養親族（19〜22歳・所得58万以下）の人数。 */
@@ -28,6 +30,7 @@ export const defaultForm: FormState = {
   hasSpouse: false,
   spouseSalaryIncome: 0,
   spouseElderly: false,
+  depUnder16: 0,
   depGeneral: 0,
   depSpecified: 0,
   depElderlyCoLiving: 0,
@@ -41,6 +44,7 @@ export function toInput(f: FormState): TakeHomeInput {
     age: f.age,
     spouse: f.hasSpouse ? { salaryIncome: f.spouseSalaryIncome, elderly: f.spouseElderly } : undefined,
     dependents: {
+      under16: f.depUnder16,
       general: f.depGeneral,
       specified: f.depSpecified,
       elderlyCoLiving: f.depElderlyCoLiving,

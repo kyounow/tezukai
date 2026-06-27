@@ -77,7 +77,8 @@ function nonTaxableDependentCount(input: TakeHomeInput): number {
   }
   const d = input.dependents
   if (d) {
-    count += (d.general ?? 0) + (d.specified ?? 0) + (d.elderlyCoLiving ?? 0) + (d.elderlyOther ?? 0)
+    // 16歳未満（年少扶養）も非課税限度額の扶養親族数に含まれる（扶養控除は0でも）。
+    count += (d.under16 ?? 0) + (d.general ?? 0) + (d.specified ?? 0) + (d.elderlyCoLiving ?? 0) + (d.elderlyOther ?? 0)
   }
   return count
 }

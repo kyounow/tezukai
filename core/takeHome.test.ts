@@ -61,6 +61,29 @@ describe('年収→手取り（統合・令和7年）', () => {
     }
   })
 
+  it('年少扶養（16歳未満）は扶養控除0だが住民税の非課税判定に効く', () => {
+    // 低所得世帯: 16歳未満の子が増えると非課税限度額が上がり住民税が非課税に
+    const withoutKids = calculateTakeHome({ salaryIncome: 1_500_000, age: 30 })
+    const withKids = calculateTakeHome({
+      salaryIncome: 1_500_000,
+      age: 30,
+      dependents: { under16: 2 },
+    })
+    expect(withoutKids.residentTax).toBeGreaterThan(0)
+    expect(withKids.residentTax).toBe(0)
+  })
+
+  it('年少扶養は通常所得では税額を変えない（扶養控除0のため）', () => {
+    const base = calculateTakeHome({ salaryIncome: 5_000_000, age: 30 })
+    const withKids = calculateTakeHome({
+      salaryIncome: 5_000_000,
+      age: 30,
+      dependents: { under16: 2 },
+    })
+    expect(withKids.incomeTax).toBe(base.incomeTax)
+    expect(withKids.residentTax).toBe(base.residentTax)
+  })
+
   it('40〜64歳は介護保険分だけ手取りが減る', () => {
     const young = calculateTakeHome({ salaryIncome: 5_000_000, age: 30 })
     const middle = calculateTakeHome({ salaryIncome: 5_000_000, age: 50 })

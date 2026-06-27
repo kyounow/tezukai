@@ -108,20 +108,57 @@ export function InputForm({ form, onChange }: Props) {
       <div className="field">
         <span className="field__label">扶養親族の人数</span>
         <div className="field__grid">
-          <CountField label="一般（16〜18・23〜69歳）" value={form.depGeneral} onChange={(v) => onChange({ depGeneral: v })} />
-          <CountField label="特定扶養（19〜22歳）" value={form.depSpecified} onChange={(v) => onChange({ depSpecified: v })} />
-          <CountField label="老人・同居老親等" value={form.depElderlyCoLiving} onChange={(v) => onChange({ depElderlyCoLiving: v })} />
-          <CountField label="老人・その他" value={form.depElderlyOther} onChange={(v) => onChange({ depElderlyOther: v })} />
+          <CountField
+            label="年少（16歳未満）"
+            hint="控除なし・住民税の非課税判定に影響"
+            value={form.depUnder16}
+            onChange={(v) => onChange({ depUnder16: v })}
+          />
+          <CountField
+            label="一般（16〜18・23〜69歳）"
+            hint="控除38万円"
+            value={form.depGeneral}
+            onChange={(v) => onChange({ depGeneral: v })}
+          />
+          <CountField
+            label="特定扶養（19〜22歳）"
+            hint="控除63万円"
+            value={form.depSpecified}
+            onChange={(v) => onChange({ depSpecified: v })}
+          />
+          <CountField
+            label="老人・同居老親等（70歳以上）"
+            hint="本人や配偶者の親と同居"
+            value={form.depElderlyCoLiving}
+            onChange={(v) => onChange({ depElderlyCoLiving: v })}
+          />
+          <CountField
+            label="老人・同居以外（70歳以上）"
+            hint="別居の親など"
+            value={form.depElderlyOther}
+            onChange={(v) => onChange({ depElderlyOther: v })}
+          />
         </div>
       </div>
     </section>
   )
 }
 
-function CountField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function CountField({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string
+  hint?: string
+  value: number
+  onChange: (v: number) => void
+}) {
   return (
     <label className="count">
       <span className="count__label">{label}</span>
+      {hint && <span className="count__hint">{hint}</span>}
       <input
         className="count__input"
         type="number"
