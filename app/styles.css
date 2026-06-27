@@ -279,6 +279,26 @@ body {
   color: var(--accent);
 }
 
+/* ---- Furusato ---- */
+.furusato {
+  margin-top: 1rem;
+}
+.furusato__value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0.2rem 0 0.3rem;
+}
+.furusato__lead {
+  margin: 0 0 0.8rem;
+  font-size: 0.9rem;
+}
+.furusato__note {
+  margin: 0.8rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
 /* ---- Footer ---- */
 .app__footer {
   margin-top: 1.5rem;

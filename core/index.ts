@@ -3,6 +3,8 @@
  * 計算は純粋関数のみ。年度データは data/taxTables に分離。
  */
 export { calculateTakeHome } from './takeHome'
+export { furusatoLimit, furusatoFromResult, marginalIncomeTaxRate, FURUSATO_SELF_BURDEN } from './furusato/furusato'
+export type { FurusatoResult } from './furusato/furusato'
 export { employmentIncome, employmentIncomeDeduction } from './income/employmentIncome'
 export { socialInsurance } from './insurance/socialInsurance'
 export { baseIncomeTax, incomeTaxWithSurtax } from './tax/incomeTax'

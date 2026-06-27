@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react'
-import { calculateTakeHome } from '@core/index'
+import { calculateTakeHome, furusatoFromResult, getTaxTable } from '@core/index'
 import { defaultForm, toInput, type FormState } from './state'
 import { eraLabel } from './format'
 import { InputForm } from './components/InputForm'
 import { ResultView } from './components/ResultView'
+import { FurusatoView } from './components/FurusatoView'
 
 export function App() {
   const [form, setForm] = useState<FormState>(defaultForm)
   const onChange = (patch: Partial<FormState>) => setForm((prev) => ({ ...prev, ...patch }))
 
   const result = useMemo(() => calculateTakeHome(toInput(form)), [form])
+  const furusato = useMemo(() => furusatoFromResult(result, getTaxTable(form.taxYear)), [result, form.taxYear])
 
   return (
     <main className="app">
@@ -22,6 +24,8 @@ export function App() {
         <InputForm form={form} onChange={onChange} />
         <ResultView result={result} />
       </div>
+
+      <FurusatoView furusato={furusato} />
 
       <footer className="app__footer">
         <p>
