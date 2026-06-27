@@ -265,17 +265,117 @@ export const HUMAN_DEDUCTION_DIFF_2025 = {
 
 // ─────────────────────────────────────────────────────────────
 // 社会保険料（協会けんぽ 東京都・令和7年度／厚生年金／雇用保険）
-// 出典: 協会けんぽ r07 保険料率、日本年金機構 厚生年金保険料額表、厚労省 雇用保険料率(R7)
-// 標準報酬月額は MVP では月額(年収/12)を用い、下限・上限のみ正確にクランプする近似
-// （正確な等級表は別タスクで取り込み予定。sources-2025.md 参照）。
+// 出典: 協会けんぽ 令和7年度保険料額表(東京都)、日本年金機構 厚生年金保険料額表、厚労省 雇用保険料率(R7)
 // ─────────────────────────────────────────────────────────────
 export const SOCIAL_INSURANCE_2025 = {
   /** 健康保険（東京都・協会けんぽ）。料率は労使合計、本人負担は折半。 */
-  health: { rate: 0.0991, standardFloor: 58_000, standardCap: 1_390_000 },
+  health: { rate: 0.0991 },
   /** 介護保険（第2号・40〜64歳・全国一律）。健保に上乗せ。 */
   longTermCare: { rate: 0.0159, minAge: 40, maxAge: 64 },
-  /** 厚生年金（全国一律18.3%固定）。標準報酬月額の上下限。 */
-  pension: { rate: 0.183, standardFloor: 88_000, standardCap: 650_000 },
+  /** 厚生年金（全国一律18.3%固定）。 */
+  pension: { rate: 0.183 },
   /** 雇用保険（一般の事業・令和7年度）。本人負担は賃金総額×5.5/1000。 */
   employment: { employeeRate: 0.0055 },
 } as const
+
+/** 標準報酬月額の等級。standard＝標準報酬月額、lower＝この等級が適用される報酬月額の下限（円, 以上。最下級は0）。 */
+export interface StandardRemunerationGrade {
+  readonly standard: number
+  readonly lower: number
+}
+
+/**
+ * 健康保険 標準報酬月額 等級表（全50等級）。出典: 協会けんぽ 令和7年度保険料額表。
+ * 報酬月額が lower 以上で次の等級未満のとき standard を標準報酬月額とする。
+ */
+export const HEALTH_GRADES_2025: readonly StandardRemunerationGrade[] = [
+  { standard: 58_000, lower: 0 },
+  { standard: 68_000, lower: 63_000 },
+  { standard: 78_000, lower: 73_000 },
+  { standard: 88_000, lower: 83_000 },
+  { standard: 98_000, lower: 93_000 },
+  { standard: 104_000, lower: 101_000 },
+  { standard: 110_000, lower: 107_000 },
+  { standard: 118_000, lower: 114_000 },
+  { standard: 126_000, lower: 122_000 },
+  { standard: 134_000, lower: 130_000 },
+  { standard: 142_000, lower: 138_000 },
+  { standard: 150_000, lower: 146_000 },
+  { standard: 160_000, lower: 155_000 },
+  { standard: 170_000, lower: 165_000 },
+  { standard: 180_000, lower: 175_000 },
+  { standard: 190_000, lower: 185_000 },
+  { standard: 200_000, lower: 195_000 },
+  { standard: 220_000, lower: 210_000 },
+  { standard: 240_000, lower: 230_000 },
+  { standard: 260_000, lower: 250_000 },
+  { standard: 280_000, lower: 270_000 },
+  { standard: 300_000, lower: 290_000 },
+  { standard: 320_000, lower: 310_000 },
+  { standard: 340_000, lower: 330_000 },
+  { standard: 360_000, lower: 350_000 },
+  { standard: 380_000, lower: 370_000 },
+  { standard: 410_000, lower: 395_000 },
+  { standard: 440_000, lower: 425_000 },
+  { standard: 470_000, lower: 455_000 },
+  { standard: 500_000, lower: 485_000 },
+  { standard: 530_000, lower: 515_000 },
+  { standard: 560_000, lower: 545_000 },
+  { standard: 590_000, lower: 575_000 },
+  { standard: 620_000, lower: 605_000 },
+  { standard: 650_000, lower: 635_000 },
+  { standard: 680_000, lower: 665_000 },
+  { standard: 710_000, lower: 695_000 },
+  { standard: 750_000, lower: 730_000 },
+  { standard: 790_000, lower: 770_000 },
+  { standard: 830_000, lower: 810_000 },
+  { standard: 880_000, lower: 855_000 },
+  { standard: 930_000, lower: 905_000 },
+  { standard: 980_000, lower: 955_000 },
+  { standard: 1_030_000, lower: 1_005_000 },
+  { standard: 1_090_000, lower: 1_055_000 },
+  { standard: 1_150_000, lower: 1_115_000 },
+  { standard: 1_210_000, lower: 1_175_000 },
+  { standard: 1_270_000, lower: 1_235_000 },
+  { standard: 1_330_000, lower: 1_295_000 },
+  { standard: 1_390_000, lower: 1_355_000 },
+]
+
+/**
+ * 厚生年金 標準報酬月額 等級表（全32等級）。出典: 日本年金機構 厚生年金保険料額表。
+ * 下限88,000円・上限650,000円。
+ */
+export const PENSION_GRADES_2025: readonly StandardRemunerationGrade[] = [
+  { standard: 88_000, lower: 0 },
+  { standard: 98_000, lower: 93_000 },
+  { standard: 104_000, lower: 101_000 },
+  { standard: 110_000, lower: 107_000 },
+  { standard: 118_000, lower: 114_000 },
+  { standard: 126_000, lower: 122_000 },
+  { standard: 134_000, lower: 130_000 },
+  { standard: 142_000, lower: 138_000 },
+  { standard: 150_000, lower: 146_000 },
+  { standard: 160_000, lower: 155_000 },
+  { standard: 170_000, lower: 165_000 },
+  { standard: 180_000, lower: 175_000 },
+  { standard: 190_000, lower: 185_000 },
+  { standard: 200_000, lower: 195_000 },
+  { standard: 220_000, lower: 210_000 },
+  { standard: 240_000, lower: 230_000 },
+  { standard: 260_000, lower: 250_000 },
+  { standard: 280_000, lower: 270_000 },
+  { standard: 300_000, lower: 290_000 },
+  { standard: 320_000, lower: 310_000 },
+  { standard: 340_000, lower: 330_000 },
+  { standard: 360_000, lower: 350_000 },
+  { standard: 380_000, lower: 370_000 },
+  { standard: 410_000, lower: 395_000 },
+  { standard: 440_000, lower: 425_000 },
+  { standard: 470_000, lower: 455_000 },
+  { standard: 500_000, lower: 485_000 },
+  { standard: 530_000, lower: 515_000 },
+  { standard: 560_000, lower: 545_000 },
+  { standard: 590_000, lower: 575_000 },
+  { standard: 620_000, lower: 605_000 },
+  { standard: 650_000, lower: 635_000 },
+]

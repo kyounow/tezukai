@@ -1,10 +1,21 @@
-import { SOCIAL_INSURANCE_2025 } from '@data/taxTables/2025'
+import {
+  HEALTH_GRADES_2025,
+  PENSION_GRADES_2025,
+  SOCIAL_INSURANCE_2025,
+  type StandardRemunerationGrade,
+} from '@data/taxTables/2025'
 import type { SocialInsuranceBreakdown } from '../types'
 
 type SocialInsuranceTable = typeof SOCIAL_INSURANCE_2025
 
-function clamp(value: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, value))
+/** 報酬月額から標準報酬月額を求める（等級表を昇順に走査し、下限を満たす最上位の等級）。 */
+export function standardRemuneration(monthly: number, grades: readonly StandardRemunerationGrade[]): number {
+  let standard = grades[0].standard
+  for (const grade of grades) {
+    if (monthly >= grade.lower) standard = grade.standard
+    else break
+  }
+  return standard
 }
 
 /**
@@ -20,9 +31,9 @@ export function roundPremium(yen: number): number {
 /**
  * 社会保険料（本人負担・年額）を概算する。
  *
- * MVP の近似（sources-2025.md 参照）:
- * - 標準報酬月額 ≒ 月額（年収/12）。健保・厚年とも下限/上限のみ正確にクランプ。
- * - 中間の等級刻みは省略。賞与は分離せず年収に含めて月割り。
+ * 近似（sources-2025.md 参照）:
+ * - 標準報酬月額は等級表で正確に決定するが、報酬月額＝年収/12 として求める
+ *   （賞与は分離せず年収に含めて月割り）。
  * - 健保＝東京都・協会けんぽ（令和7年度）。介護は40〜64歳のみ加算。
  * - 雇用保険は賃金総額（≒年収）×本人料率。
  */
@@ -36,8 +47,8 @@ export function socialInsurance(
   }
 
   const monthly = salaryIncome / 12
-  const healthStandard = clamp(monthly, table.health.standardFloor, table.health.standardCap)
-  const pensionStandard = clamp(monthly, table.pension.standardFloor, table.pension.standardCap)
+  const healthStandard = standardRemuneration(monthly, HEALTH_GRADES_2025)
+  const pensionStandard = standardRemuneration(monthly, PENSION_GRADES_2025)
   const isCareInsured = age >= table.longTermCare.minAge && age <= table.longTermCare.maxAge
 
   // 本人負担＝労使折半（料率÷2）。月額で端数処理してから12か月分。

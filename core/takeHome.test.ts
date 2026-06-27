@@ -8,22 +8,22 @@ describe('年収→手取り（統合・令和7年）', () => {
     // 給与所得控除 1,440,000 → 給与所得 3,560,000
     expect(r.employmentIncome).toBe(3_560_000)
 
-    // 社会保険料（本人・年額）
-    expect(r.socialInsurance.total).toBe(732_752)
+    // 社会保険料（本人・年額。標準報酬41万）
+    expect(r.socialInsurance.total).toBe(721_460)
 
-    // 所得税: 課税所得 = floor1000(3,560,000 − (680,000基礎 + 732,752社保)) = 2,147,000
-    expect(r.taxableForIncomeTax).toBe(2_147_000)
-    // 117,200 ×1.021 = 119,661.2 → 119,600
-    expect(r.incomeTax).toBe(119_600)
+    // 所得税: 課税所得 = floor1000(3,560,000 − (680,000基礎 + 721,460社保)) = 2,158,000
+    expect(r.taxableForIncomeTax).toBe(2_158_000)
+    // 118,300 ×1.021 = 120,784.3 → 120,700
+    expect(r.incomeTax).toBe(120_700)
 
-    // 住民税: 課税標準 = floor1000(3,560,000 − (430,000基礎 + 732,752社保)) = 2,397,000
-    expect(r.taxableForResidentTax).toBe(2_397_000)
-    // 所得割237,100 + 均等割4,000 + 森林環境税1,000
-    expect(r.residentTaxDetail.incomePortion).toBe(237_100)
-    expect(r.residentTax).toBe(242_100)
+    // 住民税: 課税標準 = floor1000(3,560,000 − (430,000基礎 + 721,460社保)) = 2,408,000
+    expect(r.taxableForResidentTax).toBe(2_408_000)
+    // 所得割238,200 + 均等割4,000 + 森林環境税1,000
+    expect(r.residentTaxDetail.incomePortion).toBe(238_200)
+    expect(r.residentTax).toBe(243_200)
 
-    expect(r.totalBurden).toBe(119_600 + 242_100 + 732_752)
-    expect(r.takeHome).toBe(3_905_548)
+    expect(r.totalBurden).toBe(120_700 + 243_200 + 721_460)
+    expect(r.takeHome).toBe(3_914_640)
   })
 
   it('内訳の整合性（手取り = 年収 − 所得税 − 住民税 − 社保）', () => {

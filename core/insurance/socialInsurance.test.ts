@@ -1,5 +1,22 @@
 import { describe, it, expect } from 'vitest'
-import { socialInsurance, roundPremium } from './socialInsurance'
+import { socialInsurance, roundPremium, standardRemuneration } from './socialInsurance'
+import { HEALTH_GRADES_2025, PENSION_GRADES_2025 } from '@data/taxTables/2025'
+
+describe('標準報酬月額の等級判定', () => {
+  it('健保: 報酬月額→標準報酬月額', () => {
+    expect(standardRemuneration(50_000, HEALTH_GRADES_2025)).toBe(58_000) // 下限
+    expect(standardRemuneration(194_999, HEALTH_GRADES_2025)).toBe(190_000)
+    expect(standardRemuneration(195_000, HEALTH_GRADES_2025)).toBe(200_000)
+    expect(standardRemuneration(416_666, HEALTH_GRADES_2025)).toBe(410_000)
+    expect(standardRemuneration(2_000_000, HEALTH_GRADES_2025)).toBe(1_390_000) // 上限
+  })
+
+  it('厚年: 報酬月額→標準報酬月額（下限88,000・上限650,000）', () => {
+    expect(standardRemuneration(50_000, PENSION_GRADES_2025)).toBe(88_000)
+    expect(standardRemuneration(200_000, PENSION_GRADES_2025)).toBe(200_000)
+    expect(standardRemuneration(700_000, PENSION_GRADES_2025)).toBe(650_000)
+  })
+})
 
 describe('roundPremium（50銭ルール）', () => {
   it('50銭以下は切捨て・50銭超は切上げ', () => {
@@ -19,12 +36,12 @@ describe('社会保険料（本人負担・年額・近似）', () => {
 
   it('年収500万・30歳（介護なし）', () => {
     const r = socialInsurance(5_000_000, 30)
-    // 月額416,666.67 → 健保 ×4.955%=20,645.83→20,646 ×12、厚年 ×9.15%=38,125 ×12
-    expect(r.health).toBe(247_752)
+    // 月額416,666→標準報酬41万。健保 410,000×4.955%=20,315.5→20,315 ×12、厚年 410,000×9.15%=37,515 ×12
+    expect(r.health).toBe(243_780)
     expect(r.longTermCare).toBe(0)
-    expect(r.pension).toBe(457_500)
+    expect(r.pension).toBe(450_180)
     expect(r.employment).toBe(27_500) // 500万×0.55%
-    expect(r.total).toBe(732_752)
+    expect(r.total).toBe(721_460)
   })
 
   it('40〜64歳は介護保険が加算される', () => {
