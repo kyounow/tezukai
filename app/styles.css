@@ -1,0 +1,76 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN",
+    "Noto Sans JP", Meiryo, sans-serif;
+  line-height: 1.7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #f4f6f8;
+  color: #1a1a1a;
+}
+
+.app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.app__header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.app__title {
+  margin: 0;
+  font-size: 2.5rem;
+  letter-spacing: 0.04em;
+  color: #0b6e4f;
+}
+
+.app__subtitle {
+  margin: 0.25rem 0 0;
+  color: #555;
+  font-size: 1.05rem;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.card__status {
+  margin-bottom: 0;
+  color: #8a6d00;
+}
+
+.app__footer {
+  margin-top: 2rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #15191c;
+    color: #e8e8e8;
+  }
+  .card {
+    background: #1f2428;
+    box-shadow: none;
+  }
+  .app__subtitle,
+  .app__footer {
+    color: #aaa;
+  }
+  .app__title {
+    color: #3ddc97;
+  }
+}
