@@ -85,9 +85,17 @@ export function ResultView({ result: r }: Props) {
             <SubHeader label="住民税" />
             <Row label="所得控除の合計" value={yen(r.residentTaxDeductions.total)} />
             <Row label="課税標準（1,000円未満切捨て）" value={yen(r.taxableForResidentTax)} />
-            <Row label="所得割" value={yen(r.residentTaxDetail.incomePortion)} />
+            <Row label="所得割（調整控除後・住宅ローン控除前）" value={yen(r.residentTaxDetail.incomePortion)} />
             <Row label="均等割" value={yen(r.residentTaxDetail.perCapita)} />
             <Row label="森林環境税" value={yen(r.residentTaxDetail.forestTax)} />
+            {r.housingLoanCredit.total > 0 && (
+              <>
+                <SubHeader label="住宅ローン控除（税額控除）" />
+                <Row label="控除可能額（年末残高×0.7%）" value={yen(r.housingLoanCredit.available)} />
+                <Row label="所得税からの控除" value={`− ${yen(r.housingLoanCredit.appliedToIncomeTax)}`} />
+                <Row label="住民税からの控除（繰越）" value={`− ${yen(r.housingLoanCredit.appliedToResidentTax)}`} />
+              </>
+            )}
           </tbody>
         </table>
       </details>

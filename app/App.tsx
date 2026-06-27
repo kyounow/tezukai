@@ -3,6 +3,7 @@ import { calculateTakeHome, furusatoFromResult, getTaxTable } from '@core/index'
 import { defaultForm, toInput, type FormState } from './state'
 import { eraLabel } from './format'
 import { InputForm } from './components/InputForm'
+import { ExtraDeductionsForm } from './components/ExtraDeductionsForm'
 import { ResultView } from './components/ResultView'
 import { FurusatoView } from './components/FurusatoView'
 
@@ -21,7 +22,10 @@ export function App() {
       </header>
 
       <div className="app__grid">
-        <InputForm form={form} onChange={onChange} />
+        <div className="app__col">
+          <InputForm form={form} onChange={onChange} />
+          <ExtraDeductionsForm form={form} onChange={onChange} />
+        </div>
         <ResultView result={result} />
       </div>
 
