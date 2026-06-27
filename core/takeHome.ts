@@ -1,6 +1,8 @@
 import { DEFAULT_TAX_YEAR, getTaxTable } from '@data/taxTables/index'
 import type { TaxTable } from '@data/taxTables/types'
 import { employmentIncome } from './income/employmentIncome'
+import { incomeAdjustmentDeduction } from './income/incomeAdjustment'
+import { otherIncomeTotal } from './income/otherIncome'
 import { socialInsurance } from './insurance/socialInsurance'
 import {
   basicDeduction,
@@ -114,7 +116,10 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const table = getTaxTable(input.taxYear ?? DEFAULT_TAX_YEAR)
   const salaryIncome = Math.max(0, Math.floor(input.salaryIncome))
   const empIncome = employmentIncome(salaryIncome, table)
-  const totalIncome = empIncome // 給与のみ前提なので合計所得＝給与所得
+  const incomeAdjust = input.incomeAdjustment ? incomeAdjustmentDeduction(salaryIncome, input.incomeAdjustment) : 0
+  const otherTotal = input.otherIncome ? otherIncomeTotal(input.otherIncome) : 0
+  // 合計所得 = 給与所得 − 所得金額調整控除 ＋ 給与以外の所得（損益通算後）
+  const totalIncome = Math.max(0, empIncome - incomeAdjust + otherTotal)
   const si = socialInsurance(salaryIncome, input.age, table)
 
   const incomeTaxDeductions = buildDeductions('incomeTax', totalIncome, si.total, input, table)
@@ -151,6 +156,8 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
     taxYear: table.year,
     salaryIncome,
     employmentIncome: empIncome,
+    incomeAdjustment: incomeAdjust,
+    otherIncomeTotal: otherTotal,
     totalIncome,
     socialInsurance: si,
     incomeTaxDeductions,

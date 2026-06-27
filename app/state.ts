@@ -46,6 +46,19 @@ export interface FormState {
   housingPerformance: HousingPerformance
   housingChildcare: boolean
   housingBalance: number
+
+  // ── 給与以外の所得（総合課税・損益通算） ──
+  otherBusiness: number
+  otherRealEstate: number
+  otherMisc: number
+  otherDividend: number
+  otherTemporary: number
+  otherShortCapital: number
+  otherLongCapital: number
+  // ── 所得金額調整控除（850万超）の条件 ──
+  adjYoungDependent: boolean
+  adjSelfDisability: boolean
+  adjFamilyDisability: boolean
 }
 
 export const defaultForm: FormState = {
@@ -75,6 +88,16 @@ export const defaultForm: FormState = {
   housingPerformance: 'certified',
   housingChildcare: false,
   housingBalance: 0,
+  otherBusiness: 0,
+  otherRealEstate: 0,
+  otherMisc: 0,
+  otherDividend: 0,
+  otherTemporary: 0,
+  otherShortCapital: 0,
+  otherLongCapital: 0,
+  adjYoungDependent: false,
+  adjSelfDisability: false,
+  adjFamilyDisability: false,
 }
 
 /** フォーム状態をコア計算の入力に変換する。 */
@@ -103,6 +126,25 @@ export function toInput(f: FormState): TakeHomeInput {
         }
       : undefined,
     idecoAnnual: f.idecoAnnual > 0 ? f.idecoAnnual : undefined,
+    otherIncome: hasOtherIncome(f)
+      ? {
+          business: f.otherBusiness,
+          realEstate: f.otherRealEstate,
+          miscellaneous: f.otherMisc,
+          dividend: f.otherDividend,
+          temporary: f.otherTemporary,
+          generalShortTermCapital: f.otherShortCapital,
+          generalLongTermCapital: f.otherLongCapital,
+        }
+      : undefined,
+    incomeAdjustment:
+      f.adjYoungDependent || f.adjSelfDisability || f.adjFamilyDisability
+        ? {
+            hasYoungDependent: f.adjYoungDependent,
+            selfSpecialDisability: f.adjSelfDisability,
+            specialDisabilityFamily: f.adjFamilyDisability,
+          }
+        : undefined,
     housingLoan:
       f.housingEnabled && f.housingBalance > 0
         ? {
@@ -118,4 +160,16 @@ export function toInput(f: FormState): TakeHomeInput {
 
 function hasLifeInsurance(f: FormState): boolean {
   return f.lifeGeneralNew > 0 || f.lifeGeneralOld > 0 || f.lifeNursingNew > 0 || f.lifePensionNew > 0 || f.lifePensionOld > 0
+}
+
+function hasOtherIncome(f: FormState): boolean {
+  return (
+    f.otherBusiness !== 0 ||
+    f.otherRealEstate !== 0 ||
+    f.otherMisc !== 0 ||
+    f.otherDividend !== 0 ||
+    f.otherTemporary !== 0 ||
+    f.otherShortCapital !== 0 ||
+    f.otherLongCapital !== 0
+  )
 }

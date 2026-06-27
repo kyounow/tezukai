@@ -86,6 +86,39 @@ export interface HousingLoanInput {
   yearEndBalance: number
 }
 
+/**
+ * 給与以外の所得（総合課税）。損益通算で他の所得と相殺できる損失は
+ * 不動産・事業・山林・譲渡に限られ、雑・一時・配当等の損失は通算不可（0扱い）。
+ * 一時所得・総合長期譲渡は総所得に1/2で算入。**分離課税（上場株式等・土地建物の譲渡、
+ * 申告分離の配当・利子など）は対象外**。
+ */
+export interface OtherIncomeInput {
+  /** 事業所得（純額・損失はマイナス可、通算可）。 */
+  business?: number
+  /** 不動産所得（純額・損失はマイナス可、通算可）。 */
+  realEstate?: number
+  /** 雑所得（総合・その他、損失は0）。 */
+  miscellaneous?: number
+  /** 配当所得（総合課税分、損失は0）。 */
+  dividend?: number
+  /** 一時所得（特別控除50万円後の額・1/2前、損失は0）。 */
+  temporary?: number
+  /** 総合課税の短期譲渡所得（損失は当面0）。 */
+  generalShortTermCapital?: number
+  /** 総合課税の長期譲渡所得（1/2前・損失は当面0）。 */
+  generalLongTermCapital?: number
+}
+
+/** 所得金額調整控除（子ども・特別障害者等）の該当条件。 */
+export interface IncomeAdjustmentInput {
+  /** 23歳未満の扶養親族を有する。 */
+  hasYoungDependent?: boolean
+  /** 本人が特別障害者。 */
+  selfSpecialDisability?: boolean
+  /** 特別障害者である同一生計配偶者・扶養親族を有する。 */
+  specialDisabilityFamily?: boolean
+}
+
 /** 手取り計算への入力。 */
 export interface TakeHomeInput {
   /** 対象年度（省略時 2025）。 */
@@ -106,6 +139,10 @@ export interface TakeHomeInput {
   idecoAnnual?: number
   /** 住宅ローン控除（税額控除）。 */
   housingLoan?: HousingLoanInput
+  /** 給与以外の所得（総合課税・損益通算）。 */
+  otherIncome?: OtherIncomeInput
+  /** 所得金額調整控除（給与収入850万超）の該当条件。 */
+  incomeAdjustment?: IncomeAdjustmentInput
 }
 
 /** 社会保険料（本人負担・年額）の内訳。 */
@@ -175,9 +212,13 @@ export interface TakeHomeResult {
   taxYear: TaxYear
   /** 給与収入（額面年収）。 */
   salaryIncome: number
-  /** 給与所得（給与収入−給与所得控除）。 */
+  /** 給与所得（給与収入−給与所得控除。所得金額調整控除前）。 */
   employmentIncome: number
-  /** 本人の合計所得金額（給与のみ前提なので給与所得と一致）。 */
+  /** 所得金額調整控除額（給与所得から差し引く）。 */
+  incomeAdjustment: number
+  /** 給与以外の所得（損益通算後の総所得への算入額）。 */
+  otherIncomeTotal: number
+  /** 本人の合計所得金額（給与所得−調整控除＋給与以外の所得）。 */
   totalIncome: number
   /** 社会保険料（本人負担・年額）。 */
   socialInsurance: SocialInsuranceBreakdown

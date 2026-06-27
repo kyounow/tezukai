@@ -125,6 +125,34 @@ describe('年収→手取り（統合・令和7年）', () => {
     expect(withDeductions.takeHome).toBeGreaterThan(without.takeHome)
   })
 
+  it('給与以外の所得（事業所得）が合計所得に加算され課税が増える', () => {
+    const base = { salaryIncome: 5_000_000, age: 30 }
+    const r = calculateTakeHome(base)
+    const withOther = calculateTakeHome({ ...base, otherIncome: { business: 1_000_000 } })
+    expect(withOther.otherIncomeTotal).toBe(1_000_000)
+    expect(withOther.totalIncome).toBe(r.totalIncome + 1_000_000)
+    expect(withOther.incomeTax).toBeGreaterThan(r.incomeTax)
+    expect(withOther.residentTax).toBeGreaterThan(r.residentTax)
+  })
+
+  it('事業所得の損失は給与所得と損益通算され課税が減る', () => {
+    const base = { salaryIncome: 5_000_000, age: 30 }
+    const r = calculateTakeHome(base)
+    const withLoss = calculateTakeHome({ ...base, otherIncome: { business: -1_000_000 } })
+    expect(withLoss.otherIncomeTotal).toBe(-1_000_000)
+    expect(withLoss.totalIncome).toBe(r.totalIncome - 1_000_000)
+    expect(withLoss.incomeTax).toBeLessThan(r.incomeTax)
+  })
+
+  it('所得金額調整控除（850万超・23歳未満扶養）で給与所得が減り減税', () => {
+    const base = { salaryIncome: 10_000_000, age: 40 }
+    const r = calculateTakeHome(base)
+    const withAdj = calculateTakeHome({ ...base, incomeAdjustment: { hasYoungDependent: true } })
+    expect(withAdj.incomeAdjustment).toBe(150_000) // (1000万−850万)×10%
+    expect(withAdj.totalIncome).toBe(r.totalIncome - 150_000)
+    expect(withAdj.incomeTax).toBeLessThan(r.incomeTax)
+  })
+
   it('40〜64歳は介護保険分だけ手取りが減る', () => {
     const young = calculateTakeHome({ salaryIncome: 5_000_000, age: 30 })
     const middle = calculateTakeHome({ salaryIncome: 5_000_000, age: 50 })

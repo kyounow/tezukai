@@ -13,11 +13,13 @@ function YenField({
   hint,
   value,
   onChange,
+  allowNegative,
 }: {
   label: string
   hint?: string
   value: number
   onChange: (v: number) => void
+  allowNegative?: boolean
 }) {
   return (
     <label className="yenfield">
@@ -26,7 +28,14 @@ function YenField({
         {hint && <span className="yenfield__hint">{hint}</span>}
       </span>
       <span className="field__inline">
-        <NumberInput className="field__number" ariaLabel={label} value={value} max={1_000_000_000} onChange={onChange} />
+        <NumberInput
+          className="field__number"
+          ariaLabel={label}
+          value={value}
+          max={1_000_000_000}
+          allowNegative={allowNegative}
+          onChange={onChange}
+        />
         <span className="field__unit">円</span>
       </span>
     </label>
@@ -139,6 +148,40 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
               </p>
             </div>
           )}
+        </fieldset>
+
+        {/* 給与以外の所得 */}
+        <fieldset className="extra__group">
+          <legend>給与以外の所得（総合課税）</legend>
+          <p className="extra__note">
+            損失（赤字）はマイナスで入力できます（損益通算できるのは事業・不動産の損失のみ）。
+            <strong>分離課税（上場株式等・土地建物の譲渡、申告分離課税の配当・利子など）は対象外です。</strong>
+          </p>
+          <YenField label="事業所得" hint="損失は通算可（マイナス可）" value={form.otherBusiness} allowNegative onChange={(v) => onChange({ otherBusiness: v })} />
+          <YenField label="不動産所得" hint="損失は通算可（マイナス可）" value={form.otherRealEstate} allowNegative onChange={(v) => onChange({ otherRealEstate: v })} />
+          <YenField label="雑所得（その他）" value={form.otherMisc} onChange={(v) => onChange({ otherMisc: v })} />
+          <YenField label="配当所得（総合課税分）" value={form.otherDividend} onChange={(v) => onChange({ otherDividend: v })} />
+          <YenField label="一時所得（特別控除50万円後・1/2前）" value={form.otherTemporary} onChange={(v) => onChange({ otherTemporary: v })} />
+          <YenField label="総合譲渡・短期" value={form.otherShortCapital} onChange={(v) => onChange({ otherShortCapital: v })} />
+          <YenField label="総合譲渡・長期（1/2前）" value={form.otherLongCapital} onChange={(v) => onChange({ otherLongCapital: v })} />
+        </fieldset>
+
+        {/* 所得金額調整控除 */}
+        <fieldset className="extra__group">
+          <legend>所得金額調整控除（給与収入850万円超）</legend>
+          <p className="extra__note">給与収入が850万円超で、次のいずれかに該当すると給与所得から最大15万円が控除されます。</p>
+          <label className="field__check field__check--small">
+            <input type="checkbox" checked={form.adjYoungDependent} onChange={(e) => onChange({ adjYoungDependent: e.target.checked })} />
+            23歳未満の扶養親族がいる
+          </label>
+          <label className="field__check field__check--small">
+            <input type="checkbox" checked={form.adjSelfDisability} onChange={(e) => onChange({ adjSelfDisability: e.target.checked })} />
+            本人が特別障害者
+          </label>
+          <label className="field__check field__check--small">
+            <input type="checkbox" checked={form.adjFamilyDisability} onChange={(e) => onChange({ adjFamilyDisability: e.target.checked })} />
+            特別障害者である同一生計配偶者・扶養親族がいる
+          </label>
         </fieldset>
       </div>
     </details>

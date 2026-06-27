@@ -84,6 +84,11 @@ export function ResultView({ result: r }: Props) {
         <table className="summary summary--detail">
           <tbody>
             <Row label="給与所得（給与収入−給与所得控除）" value={yen(r.employmentIncome)} />
+            {r.incomeAdjustment > 0 && <Row label="所得金額調整控除" value={`− ${yen(r.incomeAdjustment)}`} />}
+            {r.otherIncomeTotal !== 0 && <Row label="給与以外の所得（損益通算後）" value={yen(r.otherIncomeTotal)} />}
+            {(r.incomeAdjustment > 0 || r.otherIncomeTotal !== 0) && (
+              <Row label="合計所得金額" value={yen(r.totalIncome)} />
+            )}
             <SubHeader label="社会保険料の内訳（本人負担・年額）" />
             <Row label="健康保険" value={yen(r.socialInsurance.health)} />
             {r.socialInsurance.longTermCare > 0 && <Row label="介護保険" value={yen(r.socialInsurance.longTermCare)} />}

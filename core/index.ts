@@ -6,6 +6,8 @@ export { calculateTakeHome } from './takeHome'
 export { furusatoLimit, furusatoFromResult, marginalIncomeTaxRate, FURUSATO_SELF_BURDEN } from './furusato/furusato'
 export type { FurusatoResult } from './furusato/furusato'
 export { employmentIncome, employmentIncomeDeduction } from './income/employmentIncome'
+export { otherIncomeTotal } from './income/otherIncome'
+export { incomeAdjustmentDeduction } from './income/incomeAdjustment'
 export { socialInsurance } from './insurance/socialInsurance'
 export { baseIncomeTax, incomeTaxWithSurtax } from './tax/incomeTax'
 export { residentTax, adjustmentCredit } from './tax/residentTax'
@@ -41,6 +43,8 @@ export type {
   HousingLoanCreditBreakdown,
   HousingConstruction,
   HousingPerformance,
+  OtherIncomeInput,
+  IncomeAdjustmentInput,
 } from './types'
 
 // 年度別ルールセット（法改正対応）のレジストリを UI 向けに再エクスポート。
