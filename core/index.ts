@@ -25,3 +25,7 @@ export type {
   DeductionsBreakdown,
   ResidentTaxBreakdown,
 } from './types'
+
+// 年度別ルールセット（法改正対応）のレジストリを UI 向けに再エクスポート。
+export { getTaxTable, TAX_TABLES, AVAILABLE_TAX_YEARS, DEFAULT_TAX_YEAR } from '@data/taxTables/index'
+export type { TaxTable } from '@data/taxTables/types'

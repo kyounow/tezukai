@@ -1,7 +1,10 @@
-import type { TakeHomeInput } from '@core/index'
+import { DEFAULT_TAX_YEAR } from '@core/index'
+import type { TakeHomeInput, TaxYear } from '@core/index'
 
 /** 入力フォームの状態（UI 都合の平坦な構造）。 */
 export interface FormState {
+  /** 対象年度（税制ルールセットの選択）。 */
+  taxYear: TaxYear
   /** 額面年収（円）。 */
   salaryIncome: number
   /** 本人の年齢。 */
@@ -25,6 +28,7 @@ export interface FormState {
 }
 
 export const defaultForm: FormState = {
+  taxYear: DEFAULT_TAX_YEAR,
   salaryIncome: 5_000_000,
   age: 35,
   hasSpouse: false,
@@ -40,6 +44,7 @@ export const defaultForm: FormState = {
 /** フォーム状態をコア計算の入力に変換する。 */
 export function toInput(f: FormState): TakeHomeInput {
   return {
+    taxYear: f.taxYear,
     salaryIncome: f.salaryIncome,
     age: f.age,
     spouse: f.hasSpouse ? { salaryIncome: f.spouseSalaryIncome, elderly: f.spouseElderly } : undefined,

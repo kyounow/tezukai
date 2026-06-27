@@ -19,3 +19,8 @@ export function perMonth(annual: number): string {
 export function percent(ratio: number): string {
   return `${(ratio * 100).toLocaleString('ja-JP', { maximumFractionDigits: 1 })}%`
 }
+
+/** 西暦→和暦ラベル（例: 2025 → 令和7年（2025））。令和は2019年＝令和1年。 */
+export function eraLabel(year: number): string {
+  return `令和${year - 2018}年（${year}）`
+}

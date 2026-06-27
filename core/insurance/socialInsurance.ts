@@ -1,12 +1,7 @@
-import {
-  HEALTH_GRADES_2025,
-  PENSION_GRADES_2025,
-  SOCIAL_INSURANCE_2025,
-  type StandardRemunerationGrade,
-} from '@data/taxTables/2025'
+import { getTaxTable } from '@data/taxTables/index'
+import type { StandardRemunerationGrade } from '@data/taxTables/2025'
+import type { TaxTable } from '@data/taxTables/types'
 import type { SocialInsuranceBreakdown } from '../types'
-
-type SocialInsuranceTable = typeof SOCIAL_INSURANCE_2025
 
 /** 報酬月額から標準報酬月額を求める（等級表を昇順に走査し、下限を満たす最上位の等級）。 */
 export function standardRemuneration(monthly: number, grades: readonly StandardRemunerationGrade[]): number {
@@ -40,22 +35,23 @@ export function roundPremium(yen: number): number {
 export function socialInsurance(
   salaryIncome: number,
   age: number,
-  table: SocialInsuranceTable = SOCIAL_INSURANCE_2025,
+  table: TaxTable = getTaxTable(),
 ): SocialInsuranceBreakdown {
   if (salaryIncome <= 0) {
     return { health: 0, longTermCare: 0, pension: 0, employment: 0, total: 0 }
   }
 
+  const si = table.socialInsurance
   const monthly = salaryIncome / 12
-  const healthStandard = standardRemuneration(monthly, HEALTH_GRADES_2025)
-  const pensionStandard = standardRemuneration(monthly, PENSION_GRADES_2025)
-  const isCareInsured = age >= table.longTermCare.minAge && age <= table.longTermCare.maxAge
+  const healthStandard = standardRemuneration(monthly, table.healthGrades)
+  const pensionStandard = standardRemuneration(monthly, table.pensionGrades)
+  const isCareInsured = age >= si.longTermCare.minAge && age <= si.longTermCare.maxAge
 
   // 本人負担＝労使折半（料率÷2）。月額で端数処理してから12か月分。
-  const health = roundPremium((healthStandard * table.health.rate) / 2) * 12
-  const longTermCare = isCareInsured ? roundPremium((healthStandard * table.longTermCare.rate) / 2) * 12 : 0
-  const pension = roundPremium((pensionStandard * table.pension.rate) / 2) * 12
-  const employment = Math.floor(salaryIncome * table.employment.employeeRate)
+  const health = roundPremium((healthStandard * si.health.rate) / 2) * 12
+  const longTermCare = isCareInsured ? roundPremium((healthStandard * si.longTermCare.rate) / 2) * 12 : 0
+  const pension = roundPremium((pensionStandard * si.pension.rate) / 2) * 12
+  const employment = Math.floor(salaryIncome * si.employment.employeeRate)
 
   const total = health + longTermCare + pension + employment
   return { health, longTermCare, pension, employment, total }

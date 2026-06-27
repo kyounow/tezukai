@@ -107,6 +107,15 @@ body {
 .field__number--narrow {
   flex: 0 0 6rem;
 }
+.field__select {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 1rem;
+}
 .field__unit {
   color: var(--muted);
 }

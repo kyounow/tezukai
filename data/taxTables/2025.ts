@@ -5,6 +5,7 @@
  * 原則として「所得税＝令和7年分」「個人住民税＝令和8年度（令和7年所得）」で統一。
  * すべて円単位。各数値の一次情報は行コメントの URL を参照。
  */
+import type { TaxTable } from './types'
 
 export const TAX_YEAR_2025 = 2025 as const
 
@@ -379,3 +380,31 @@ export const PENSION_GRADES_2025: readonly StandardRemunerationGrade[] = [
   { standard: 620_000, lower: 605_000 },
   { standard: 650_000, lower: 635_000 },
 ]
+
+// ─────────────────────────────────────────────────────────────
+// 集約: 令和7年（2025）の TaxTable。レジストリ（index.ts）から参照する。
+// 上の個別定数は出典コメント保持のためそのまま残し、ここで束ねる。
+// ─────────────────────────────────────────────────────────────
+export const TAX_TABLE_2025: TaxTable = {
+  year: TAX_YEAR_2025,
+  employmentIncomeDeduction: EMPLOYMENT_INCOME_DEDUCTION_2025,
+  incomeTaxBrackets: INCOME_TAX_BRACKETS_2025,
+  reconstructionSurtaxRate: RECONSTRUCTION_SURTAX_RATE,
+  basicDeduction: {
+    incomeTax: BASIC_DEDUCTION_INCOME_TAX_2025,
+    residentTax: BASIC_DEDUCTION_RESIDENT_TAX_2025,
+  },
+  ownerIncomeTiers: SPOUSE_OWNER_INCOME_TIERS,
+  spouseDeductionIncomeLimit: SPOUSE_DEDUCTION_INCOME_LIMIT,
+  spouseSpecialDeductionIncomeLimit: SPOUSE_SPECIAL_DEDUCTION_INCOME_LIMIT,
+  spouseDeduction: SPOUSE_DEDUCTION_2025,
+  spouseSpecialDeduction: SPOUSE_SPECIAL_DEDUCTION_2025,
+  dependentDeduction: DEPENDENT_DEDUCTION_2025,
+  specialRelativeDeduction: SPECIAL_RELATIVE_DEDUCTION_2025,
+  residentTax: RESIDENT_TAX_2025,
+  residentTaxNonTaxable: RESIDENT_TAX_NON_TAXABLE_2025,
+  humanDeductionDiff: HUMAN_DEDUCTION_DIFF_2025,
+  socialInsurance: SOCIAL_INSURANCE_2025,
+  healthGrades: HEALTH_GRADES_2025,
+  pensionGrades: PENSION_GRADES_2025,
+}

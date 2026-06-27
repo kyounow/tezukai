@@ -1,4 +1,5 @@
-import { RESIDENT_TAX_2025, RESIDENT_TAX_NON_TAXABLE_2025 } from '@data/taxTables/2025'
+import { getTaxTable } from '@data/taxTables/index'
+import type { TaxTable } from '@data/taxTables/types'
 import { floorTo1000, floorTo100 } from '../util/rounding'
 import type { ResidentTaxBreakdown } from '../types'
 
@@ -6,8 +7,13 @@ import type { ResidentTaxBreakdown } from '../types'
  * 調整控除額（円）。所得税と住民税の人的控除額の差に基づき所得割から控除する。
  * 出典: 東京都主税局 個人住民税（調整控除）。
  */
-export function adjustmentCredit(taxableResident: number, humanDeductionDiffSum: number, totalIncome: number): number {
-  const { threshold, rate, minimumOverThreshold, incomeCap } = RESIDENT_TAX_2025.adjustment
+export function adjustmentCredit(
+  taxableResident: number,
+  humanDeductionDiffSum: number,
+  totalIncome: number,
+  table: TaxTable = getTaxTable(),
+): number {
+  const { threshold, rate, minimumOverThreshold, incomeCap } = table.residentTax.adjustment
   if (totalIncome > incomeCap) return 0
   if (humanDeductionDiffSum <= 0 || taxableResident <= 0) return 0
 
@@ -34,29 +40,29 @@ export interface ResidentTaxParams {
  * 所得割は市町村分・道府県分を別々に100円未満切捨て。均等割・森林環境税は非課税限度額で判定。
  * 出典: 総務省・東京都主税局・川崎市計算例（端数処理）。
  */
-export function residentTax(p: ResidentTaxParams): ResidentTaxBreakdown {
+export function residentTax(p: ResidentTaxParams, table: TaxTable = getTaxTable()): ResidentTaxBreakdown {
+  const rt = table.residentTax
+  const nt = table.residentTaxNonTaxable
   const taxable = floorTo1000(Math.max(0, p.taxableForResident))
   const count = 1 + Math.max(0, p.dependentCount)
   const hasDependents = p.dependentCount > 0
-  const N = RESIDENT_TAX_NON_TAXABLE_2025
 
-  const perCapitaLimit = N.perPerson * count + N.base + (hasDependents ? N.perCapitaAddition : 0)
-  const incomePortionLimit = N.perPerson * count + N.base + (hasDependents ? N.incomePortionAddition : 0)
+  const perCapitaLimit = nt.perPerson * count + nt.base + (hasDependents ? nt.perCapitaAddition : 0)
+  const incomePortionLimit = nt.perPerson * count + nt.base + (hasDependents ? nt.incomePortionAddition : 0)
   const perCapitaExempt = p.totalIncome <= perCapitaLimit
   const incomePortionExempt = p.totalIncome <= incomePortionLimit
 
-  const adj = adjustmentCredit(taxable, p.humanDeductionDiffSum, p.totalIncome)
+  const adj = adjustmentCredit(taxable, p.humanDeductionDiffSum, p.totalIncome, table)
 
   let incomePortion = 0
   if (!incomePortionExempt && taxable > 0) {
-    const { city, prefecture } = RESIDENT_TAX_2025.incomeRate
-    const cityPortion = floorTo100(Math.max(0, taxable * city - adj * 0.6))
-    const prefPortion = floorTo100(Math.max(0, taxable * prefecture - adj * 0.4))
+    const cityPortion = floorTo100(Math.max(0, taxable * rt.incomeRate.city - adj * 0.6))
+    const prefPortion = floorTo100(Math.max(0, taxable * rt.incomeRate.prefecture - adj * 0.4))
     incomePortion = cityPortion + prefPortion
   }
 
-  const perCapita = perCapitaExempt ? 0 : RESIDENT_TAX_2025.perCapita.total
-  const forestTax = perCapitaExempt ? 0 : RESIDENT_TAX_2025.forestTax
+  const perCapita = perCapitaExempt ? 0 : rt.perCapita.total
+  const forestTax = perCapitaExempt ? 0 : rt.forestTax
 
   return {
     incomePortion,

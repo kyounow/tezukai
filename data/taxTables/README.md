@@ -9,4 +9,20 @@
 - すべての数値に**出典コメント**を必ず添える（国税庁・総務省などの一次情報へのリンク/根拠）。
 - 値の意味・単位（円 / % / 上限 など）をコメントで明示する。
 
-> Phase 1 で `2025.ts`（給与所得控除表・所得税累進テーブル・基礎控除・住民税率/均等割 等）を追加する。
+## アーキテクチャ
+
+- `types.ts` … 年度別ルールの集約型 `TaxTable` と各区分の型。
+- `<年度>.ts` … その年度の定数（出典コメント付き）＋ `TAX_TABLE_<年度>: TaxTable` の集約 export。
+- `index.ts` … レジストリ。`TAX_TABLES` / `DEFAULT_TAX_YEAR` / `AVAILABLE_TAX_YEARS` / `getTaxTable(year)`。
+- `core/` は `getTaxTable(year)` で受け取った `TaxTable` を注入されて計算する（年度直結びつきなし）。
+
+## 新しい税年度を追加する手順（法改正対応）
+
+1. **`<新年度>.ts` を作成**: 直近年（例 `2025.ts`）を複製し、改正後の数値に更新。**各数値に一次情報の出典コメントを必ず付ける**。新設控除は `TaxTable` の optional フィールドへ、廃止された控除は未設定に。
+2. **`TaxYear` を拡張**: `types.ts` のユニオンに新年度を追加（例 `2025 | 2026`）。
+3. **レジストリに登録**: `index.ts` の `TAX_TABLES` に `TAX_TABLE_<新年度>` を追加し、`AVAILABLE_TAX_YEARS` に年度を追加（新しい順）。必要なら `DEFAULT_TAX_YEAR` を更新。
+4. **参照ケース fixture を追加**: その年度の代表ケース（年収→手取り）を一次情報/公式系計算機で検証し `*.test.ts` に追加。
+5. **緑を確認**: `npm run typecheck` と `npm run test`（`core/taxTable.contract.test.ts` が新年度テーブルの構造健全性を自動検証）。
+
+> データで表せない**式自体の変更**が必要な場合のみ、`TaxTable.rulesetVersion` を設定して該当 `core/` 関数内で分岐する（最終手段・原則使わない）。
+> 既知の未対応・近似はリポジトリ直下の [`TODO.md`](../../TODO.md) を参照。

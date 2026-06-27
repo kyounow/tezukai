@@ -6,8 +6,9 @@
  * （所得税＝令和7年分／住民税＝令和8年度／給与所得控除は令和7年所得ベース）。
  */
 
-/** 対象年度（西暦）。当面は 2025（令和7年）のみ。 */
-export type TaxYear = 2025
+// 対象年度の型は data/taxTables 側（レジストリと同じ出所）から取得し再エクスポートする。
+import type { TaxYear } from '@data/taxTables/types'
+export type { TaxYear }
 
 /** 配偶者の入力。 */
 export interface SpouseInput {

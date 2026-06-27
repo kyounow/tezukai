@@ -1,5 +1,5 @@
 import type { TakeHomeResult } from '@core/index'
-import { yen, perMonth, percent } from '../format'
+import { yen, perMonth, percent, eraLabel } from '../format'
 
 interface Props {
   result: TakeHomeResult
@@ -24,7 +24,7 @@ export function ResultView({ result: r }: Props) {
 
   return (
     <section className="card result" aria-label="計算結果">
-      <h2 className="card__heading">計算結果（令和7年・概算）</h2>
+      <h2 className="card__heading">計算結果（{eraLabel(r.taxYear)}・概算）</h2>
 
       <div className="result__headline">
         <div className="result__takehome">

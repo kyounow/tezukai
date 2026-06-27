@@ -1,5 +1,7 @@
+import { AVAILABLE_TAX_YEARS } from '@core/index'
+import type { TaxYear } from '@core/index'
 import type { FormState } from '../state'
-import { man } from '../format'
+import { eraLabel, man } from '../format'
 
 interface Props {
   form: FormState
@@ -15,6 +17,26 @@ export function InputForm({ form, onChange }: Props) {
   return (
     <section className="card form" aria-label="入力">
       <h2 className="card__heading">入力</h2>
+
+      {/* 対象年度 */}
+      <div className="field">
+        <label className="field__label" htmlFor="tax-year">
+          対象年度
+          <span className="field__hint">税制ルールの年度</span>
+        </label>
+        <select
+          id="tax-year"
+          className="field__select"
+          value={form.taxYear}
+          onChange={(e) => onChange({ taxYear: Number(e.target.value) as TaxYear })}
+        >
+          {AVAILABLE_TAX_YEARS.map((y) => (
+            <option key={y} value={y}>
+              {eraLabel(y)}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {/* 年収 */}
       <div className="field">
