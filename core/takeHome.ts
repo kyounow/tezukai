@@ -9,10 +9,16 @@ import {
   spouseDeduction,
   type TaxKind,
 } from './deductions/deductions'
-import { incomeTaxWithSurtax } from './tax/incomeTax'
+import {
+  lifeInsuranceDeduction,
+  medicalExpenseDeduction,
+  smallEnterpriseDeduction,
+} from './deductions/extraDeductions'
+import { housingLoanAvailableCredit } from './deductions/housingLoan'
+import { baseIncomeTax } from './tax/incomeTax'
 import { residentTax } from './tax/residentTax'
-import { floorTo1000 } from './util/rounding'
-import type { DeductionsBreakdown, TakeHomeInput, TakeHomeResult } from './types'
+import { floorTo1000, floorTo100 } from './util/rounding'
+import type { DeductionsBreakdown, HousingLoanCreditBreakdown, TakeHomeInput, TakeHomeResult } from './types'
 
 /** 特定親族特別控除の上位帯（合計所得95万以下）の人的控除差は特定扶養と同じ18万で近似。 */
 const SPECIAL_RELATIVE_DIFF_INCOME_LIMIT = 950_000
@@ -32,8 +38,22 @@ function buildDeductions(
   const specialRelative = input.dependents?.specialRelativeIncomes
     ? specialRelativeDeduction(input.dependents.specialRelativeIncomes, kind, table)
     : 0
-  const total = basic + socialInsuranceTotal + spouse + dependents + specialRelative
-  return { basic, socialInsurance: socialInsuranceTotal, spouse, dependents, specialRelative, total }
+  const medical = input.medicalExpense ? medicalExpenseDeduction(input.medicalExpense, totalIncome, table) : 0
+  const lifeInsurance = input.lifeInsurance ? lifeInsuranceDeduction(input.lifeInsurance, kind, table) : 0
+  const smallEnterprise = input.idecoAnnual ? smallEnterpriseDeduction(input.idecoAnnual) : 0
+  const total =
+    basic + socialInsuranceTotal + spouse + dependents + specialRelative + medical + lifeInsurance + smallEnterprise
+  return {
+    basic,
+    socialInsurance: socialInsuranceTotal,
+    spouse,
+    dependents,
+    specialRelative,
+    medical,
+    lifeInsurance,
+    smallEnterprise,
+    total,
+  }
 }
 
 /** 調整控除に用いる人的控除額の差の合計（主要控除のみ・近似。sources-2025.md 参照）。 */
@@ -102,7 +122,14 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const taxableForIncomeTax = floorTo1000(Math.max(0, totalIncome - incomeTaxDeductions.total))
   const taxableForResident = floorTo1000(Math.max(0, totalIncome - residentTaxDeductions.total))
 
-  const incomeTax = incomeTaxWithSurtax(taxableForIncomeTax, table)
+  // 所得税の算出額（住宅ローン控除＝税額控除の適用前）。
+  const baseTax = baseIncomeTax(taxableForIncomeTax, table)
+  // 住宅ローン控除を「所得税 → 住民税所得割」の順に配分。
+  const housingLoanCredit = applyHousingLoanCredit(input, totalIncome, baseTax, taxableForIncomeTax, table)
+  const baseTaxAfterCredit = baseTax - housingLoanCredit.appliedToIncomeTax
+  const incomeTax = baseTaxAfterCredit <= 0 ? 0 : floorTo100(baseTaxAfterCredit * (1 + table.reconstructionSurtaxRate))
+
+  // 住民税。resident.incomePortion は調整控除後・住宅ローン控除前（ふるさと納税の基礎）。
   const resident = residentTax(
     {
       taxableForResident,
@@ -112,8 +139,9 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
     },
     table,
   )
+  const residentTaxTotal = Math.max(0, resident.total - housingLoanCredit.appliedToResidentTax)
 
-  const totalBurden = incomeTax + resident.total + si.total
+  const totalBurden = incomeTax + residentTaxTotal + si.total
   const takeHome = salaryIncome - totalBurden
 
   return {
@@ -127,9 +155,42 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
     taxableForIncomeTax,
     taxableForResidentTax: taxableForResident,
     incomeTax,
-    residentTax: resident.total,
+    residentTax: residentTaxTotal,
     residentTaxDetail: resident,
+    housingLoanCredit,
     totalBurden,
     takeHome,
+  }
+}
+
+/** 住宅ローン控除（税額控除）を所得税→住民税所得割の順に配分する。 */
+function applyHousingLoanCredit(
+  input: TakeHomeInput,
+  totalIncome: number,
+  baseTax: number,
+  taxableForIncomeTax: number,
+  table: TaxTable,
+): HousingLoanCreditBreakdown {
+  const empty: HousingLoanCreditBreakdown = {
+    available: 0,
+    appliedToIncomeTax: 0,
+    appliedToResidentTax: 0,
+    total: 0,
+  }
+  if (!input.housingLoan || !table.housingLoan) return empty
+  const available = housingLoanAvailableCredit(input.housingLoan, totalIncome, table)
+  if (available <= 0) return empty
+
+  const appliedToIncomeTax = Math.min(available, Math.max(0, baseTax))
+  const carryoverCap = Math.min(
+    table.housingLoan.residentCarryover.cap,
+    Math.floor(taxableForIncomeTax * table.housingLoan.residentCarryover.rate),
+  )
+  const appliedToResidentTax = Math.min(available - appliedToIncomeTax, Math.max(0, carryoverCap))
+  return {
+    available,
+    appliedToIncomeTax,
+    appliedToResidentTax,
+    total: appliedToIncomeTax + appliedToResidentTax,
   }
 }

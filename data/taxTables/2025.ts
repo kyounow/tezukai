@@ -5,7 +5,12 @@
  * 原則として「所得税＝令和7年分」「個人住民税＝令和8年度（令和7年所得）」で統一。
  * すべて円単位。各数値の一次情報は行コメントの URL を参照。
  */
-import type { TaxTable } from './types'
+import type {
+  HousingLoanConfig,
+  LifeInsuranceConfig,
+  MedicalExpenseConfig,
+  TaxTable,
+} from './types'
 
 export const TAX_YEAR_2025 = 2025 as const
 
@@ -382,6 +387,84 @@ export const PENSION_GRADES_2025: readonly StandardRemunerationGrade[] = [
 ]
 
 // ─────────────────────────────────────────────────────────────
+// 医療費控除（出典: 国税庁 No.1120／セルフメディケーション No.1129）
+// 控除額 = max(0,(支払医療費−保険金等)−min(10万, 総所得金額等×5%))、上限200万。
+// 所得税・住民税で同額。
+// ─────────────────────────────────────────────────────────────
+export const MEDICAL_EXPENSE_2025: MedicalExpenseConfig = {
+  floorAmount: 100_000,
+  floorRate: 0.05,
+  cap: 2_000_000,
+  selfMedication: { floor: 12_000, cap: 88_000 }, // 1.2万超〜上限8.8万
+}
+
+// ─────────────────────────────────────────────────────────────
+// 生命保険料控除（出典: 国税庁 No.1140、自治体公式（住民税））
+// 区分=一般/介護医療(新のみ)/個人年金。段階式 deduction = 支払×rate + plus。
+// 新制度: 区分上限 所得税4万/住民税2.8万。旧制度: 所得税5万/住民税3.5万。
+// 合計上限 所得税12万/住民税7万。新旧併用は区分上限(新)で頭打ち、有利選択。
+// ─────────────────────────────────────────────────────────────
+export const LIFE_INSURANCE_2025: LifeInsuranceConfig = {
+  newRegime: {
+    incomeTax: [
+      { upTo: 20_000, rate: 1, plus: 0 },
+      { upTo: 40_000, rate: 0.5, plus: 10_000 },
+      { upTo: 80_000, rate: 0.25, plus: 20_000 },
+      { upTo: null, rate: 0, plus: 40_000 },
+    ],
+    residentTax: [
+      { upTo: 12_000, rate: 1, plus: 0 },
+      { upTo: 32_000, rate: 0.5, plus: 6_000 },
+      { upTo: 56_000, rate: 0.25, plus: 14_000 },
+      { upTo: null, rate: 0, plus: 28_000 },
+    ],
+  },
+  oldRegime: {
+    incomeTax: [
+      { upTo: 25_000, rate: 1, plus: 0 },
+      { upTo: 50_000, rate: 0.5, plus: 12_500 },
+      { upTo: 100_000, rate: 0.25, plus: 25_000 },
+      { upTo: null, rate: 0, plus: 50_000 },
+    ],
+    residentTax: [
+      { upTo: 15_000, rate: 1, plus: 0 },
+      { upTo: 40_000, rate: 0.5, plus: 7_500 },
+      { upTo: 70_000, rate: 0.25, plus: 17_500 },
+      { upTo: null, rate: 0, plus: 35_000 },
+    ],
+  },
+  combinedCategoryCap: { incomeTax: 40_000, residentTax: 28_000 },
+  totalCap: { incomeTax: 120_000, residentTax: 70_000 },
+}
+
+// ─────────────────────────────────────────────────────────────
+// 住宅借入金等特別控除（住宅ローン控除）令和4〜7入居の現行制度（控除率0.7%）
+// 出典: 国税庁 No.1211-1（新築）/No.1211-3（中古）、国交省 住宅ローン減税。
+// 控除額 = min(年末残高, 借入限度額) × 0.7%。所得税で引ききれない分は住民税所得割から
+//   （前年課税総所得×5%・上限97,500円）。借入限度額は 入居年×新築/中古×住宅性能。
+// 子育て・若者夫婦世帯は令和6・7新築のみ上乗せ。新築その他は令和6・7は原則対象外(0)。
+// ─────────────────────────────────────────────────────────────
+export const HOUSING_LOAN_2025: HousingLoanConfig = {
+  creditRate: 0.007,
+  incomeLimit: 20_000_000,
+  residentCarryover: { rate: 0.05, cap: 97_500 },
+  period: { new: 13, used: 10 },
+  limits: {
+    new: {
+      2022: { certified: 50_000_000, zeh: 45_000_000, energySaving: 40_000_000, other: 30_000_000 },
+      2023: { certified: 50_000_000, zeh: 45_000_000, energySaving: 40_000_000, other: 30_000_000 },
+      2024: { certified: 45_000_000, zeh: 35_000_000, energySaving: 30_000_000, other: 0 },
+      2025: { certified: 45_000_000, zeh: 35_000_000, energySaving: 30_000_000, other: 0 },
+    },
+    newChildcare: {
+      2024: { certified: 50_000_000, zeh: 45_000_000, energySaving: 40_000_000, other: 0 },
+      2025: { certified: 50_000_000, zeh: 45_000_000, energySaving: 40_000_000, other: 0 },
+    },
+    used: { certified: 30_000_000, zeh: 30_000_000, energySaving: 30_000_000, other: 20_000_000 },
+  },
+}
+
+// ─────────────────────────────────────────────────────────────
 // 集約: 令和7年（2025）の TaxTable。レジストリ（index.ts）から参照する。
 // 上の個別定数は出典コメント保持のためそのまま残し、ここで束ねる。
 // ─────────────────────────────────────────────────────────────
@@ -407,4 +490,7 @@ export const TAX_TABLE_2025: TaxTable = {
   socialInsurance: SOCIAL_INSURANCE_2025,
   healthGrades: HEALTH_GRADES_2025,
   pensionGrades: PENSION_GRADES_2025,
+  medicalExpense: MEDICAL_EXPENSE_2025,
+  lifeInsurance: LIFE_INSURANCE_2025,
+  housingLoan: HOUSING_LOAN_2025,
 }

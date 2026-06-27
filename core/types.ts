@@ -7,8 +7,8 @@
  */
 
 // 対象年度の型は data/taxTables 側（レジストリと同じ出所）から取得し再エクスポートする。
-import type { TaxYear } from '@data/taxTables/types'
-export type { TaxYear }
+import type { HousingConstruction, HousingPerformance, TaxYear } from '@data/taxTables/types'
+export type { TaxYear, HousingConstruction, HousingPerformance }
 
 /** 配偶者の入力。 */
 export interface SpouseInput {
@@ -41,6 +41,48 @@ export interface DependentsInput {
   specialRelativeIncomes?: number[]
 }
 
+/** 医療費控除の入力（通常 と セルフメディケーションは有利な方を自動採用）。 */
+export interface MedicalExpenseInput {
+  /** その年に支払った医療費の合計（円）。 */
+  paid?: number
+  /** 保険金等で補填される金額（円）。 */
+  reimbursed?: number
+  /** セルフメディケーション税制：特定一般用医薬品等の購入費（円）。 */
+  selfMedicationPaid?: number
+}
+
+/** 生命保険料控除の1区分の入力（新制度／旧制度の年間支払保険料）。 */
+export interface LifeInsuranceCategoryInput {
+  /** 新制度（平成24年1月以降契約）の年間支払保険料（円）。 */
+  newAmount?: number
+  /** 旧制度（平成23年12月以前契約）の年間支払保険料（円）。 */
+  oldAmount?: number
+}
+
+/** 生命保険料控除の入力（3区分）。 */
+export interface LifeInsuranceInput {
+  /** 一般生命保険料。 */
+  general?: LifeInsuranceCategoryInput
+  /** 介護医療保険料（新制度のみ）。 */
+  nursingMedical?: LifeInsuranceCategoryInput
+  /** 個人年金保険料。 */
+  pension?: LifeInsuranceCategoryInput
+}
+
+/** 住宅ローン控除の入力。借入限度額は入居年×取得区分×住宅性能で決まる。 */
+export interface HousingLoanInput {
+  /** 居住開始年（西暦。現行制度は2022〜2025）。 */
+  moveInYear: number
+  /** 新築・買取再販 / 中古。 */
+  construction: HousingConstruction
+  /** 住宅の環境性能区分。 */
+  performance: HousingPerformance
+  /** 子育て世帯・若者夫婦世帯（令和6・7の新築で借入限度額が上乗せ）。 */
+  childcareHousehold?: boolean
+  /** 年末の住宅ローン残高（円）。 */
+  yearEndBalance: number
+}
+
 /** 手取り計算への入力。 */
 export interface TakeHomeInput {
   /** 対象年度（省略時 2025）。 */
@@ -53,6 +95,14 @@ export interface TakeHomeInput {
   spouse?: SpouseInput
   /** 扶養親族（いなければ省略）。 */
   dependents?: DependentsInput
+  /** 医療費控除（Phase 4）。 */
+  medicalExpense?: MedicalExpenseInput
+  /** 生命保険料控除（Phase 4）。 */
+  lifeInsurance?: LifeInsuranceInput
+  /** iDeCo・小規模企業共済等掛金（年額・全額が所得控除）。 */
+  idecoAnnual?: number
+  /** 住宅ローン控除（税額控除）。 */
+  housingLoan?: HousingLoanInput
 }
 
 /** 社会保険料（本人負担・年額）の内訳。 */
@@ -81,7 +131,25 @@ export interface DeductionsBreakdown {
   dependents: number
   /** 特定親族特別控除。 */
   specialRelative: number
+  /** 医療費控除（Phase 4）。 */
+  medical: number
+  /** 生命保険料控除（Phase 4）。 */
+  lifeInsurance: number
+  /** 小規模企業共済等掛金控除（iDeCo 等・Phase 4）。 */
+  smallEnterprise: number
   /** 合計。 */
+  total: number
+}
+
+/** 住宅ローン控除（税額控除）の内訳。 */
+export interface HousingLoanCreditBreakdown {
+  /** 控除可能額（年末残高×0.7%、借入限度内）。 */
+  available: number
+  /** 所得税から控除した額。 */
+  appliedToIncomeTax: number
+  /** 住民税所得割から控除した額（繰越上限内）。 */
+  appliedToResidentTax: number
+  /** 実際に控除された合計。 */
   total: number
 }
 
@@ -118,12 +186,18 @@ export interface TakeHomeResult {
   taxableForIncomeTax: number
   /** 住民税の課税標準（1,000円未満切捨て後）。 */
   taxableForResidentTax: number
-  /** 所得税（復興特別所得税込み・年額・100円未満切捨て後）。 */
+  /** 所得税（住宅ローン控除適用後・復興特別所得税込み・年額・100円未満切捨て後）。 */
   incomeTax: number
-  /** 住民税（所得割＋均等割＋森林環境税）。 */
+  /** 住民税（所得割＋均等割＋森林環境税。住宅ローン控除の住民税繰越分を反映後）。 */
   residentTax: number
-  /** 住民税の内訳。 */
+  /**
+   * 住民税の内訳。incomePortion は調整控除後・**住宅ローン控除前**の所得割
+   * （ふるさと納税の特例控除20%の基礎となる額）。住宅ローン控除の住民税分は
+   * housingLoanCredit.appliedToResidentTax で別途差し引く。
+   */
   residentTaxDetail: ResidentTaxBreakdown
+  /** 住宅ローン控除（税額控除）の内訳。 */
+  housingLoanCredit: HousingLoanCreditBreakdown
   /** 公租公課の合計（所得税＋住民税＋社会保険料）。 */
   totalBurden: number
   /** 手取り（額面年収−公租公課の合計）。 */

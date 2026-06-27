@@ -42,4 +42,21 @@ describe('ふるさと納税 控除上限額', () => {
     const withSpouse = furusatoLimit({ salaryIncome: 6_000_000, age: 35, spouse: { salaryIncome: 0 } })
     expect(withSpouse.limit).toBeLessThan(single.limit)
   })
+
+  it('住宅ローン控除（税額控除）は上限を変えない（特例控除20%の基礎は税額控除前）', () => {
+    const base = { salaryIncome: 6_000_000, age: 35 }
+    const without = furusatoLimit(base)
+    const withLoan = furusatoLimit({
+      ...base,
+      housingLoan: { moveInYear: 2024, construction: 'new', performance: 'certified', yearEndBalance: 30_000_000 },
+    })
+    expect(withLoan.limit).toBe(without.limit)
+  })
+
+  it('iDeCo等の所得控除は課税所得・住民税所得割を下げ上限も下がる', () => {
+    const base = { salaryIncome: 6_000_000, age: 35 }
+    const without = furusatoLimit(base)
+    const withIdeco = furusatoLimit({ ...base, idecoAnnual: 276_000 })
+    expect(withIdeco.limit).toBeLessThan(without.limit)
+  })
 })

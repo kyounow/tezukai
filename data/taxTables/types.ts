@@ -61,6 +61,58 @@ export interface SocialInsuranceConfig {
   readonly employment: { readonly employeeRate: number }
 }
 
+// ── Phase 4: 拡張控除の設定型 ──────────────────────────────
+
+export interface MedicalExpenseConfig {
+  /** 足切り額（原則）。総所得金額等200万円以上で適用。 */
+  readonly floorAmount: number
+  /** 総所得金額等200万円未満のときの足切り率。 */
+  readonly floorRate: number
+  /** 医療費控除額の上限。 */
+  readonly cap: number
+  /** セルフメディケーション税制。 */
+  readonly selfMedication: { readonly floor: number; readonly cap: number }
+}
+
+/** 生命保険料控除の区分（一般／介護医療／個人年金）共通の段階式（所得税・住民税別）。 */
+export interface LifeInsuranceRegime {
+  readonly incomeTax: readonly DeductionBracket[]
+  readonly residentTax: readonly DeductionBracket[]
+}
+
+export interface LifeInsuranceConfig {
+  /** 新制度（平成24年1月1日以後契約）。 */
+  readonly newRegime: LifeInsuranceRegime
+  /** 旧制度（平成23年12月31日以前契約）。 */
+  readonly oldRegime: LifeInsuranceRegime
+  /** 同一区分で新旧併用時の区分上限（新制度の上限額を用いる）。 */
+  readonly combinedCategoryCap: { readonly incomeTax: number; readonly residentTax: number }
+  /** 3区分合計の適用限度額。 */
+  readonly totalCap: { readonly incomeTax: number; readonly residentTax: number }
+}
+
+/** 住宅の取得区分（新築・買取再販 / 既存=中古）。 */
+export type HousingConstruction = 'new' | 'used'
+/** 住宅の環境性能区分。 */
+export type HousingPerformance = 'certified' | 'zeh' | 'energySaving' | 'other'
+
+export interface HousingLoanConfig {
+  /** 控除率（現行0.7%）。 */
+  readonly creditRate: number
+  /** 適用の合計所得金額の上限。 */
+  readonly incomeLimit: number
+  /** 所得税で引ききれない分の住民税からの控除上限。 */
+  readonly residentCarryover: { readonly rate: number; readonly cap: number }
+  /** 控除期間（表示用・新築/中古）。 */
+  readonly period: { readonly new: number; readonly used: number }
+  /** 借入限度額（円）。入居年(西暦)→住宅性能区分。childcare は令和6・7新築の上乗せ。 */
+  readonly limits: {
+    readonly new: Readonly<Record<number, Readonly<Record<HousingPerformance, number>>>>
+    readonly newChildcare: Readonly<Record<number, Readonly<Record<HousingPerformance, number>>>>
+    readonly used: Readonly<Record<HousingPerformance, number>>
+  }
+}
+
 /** 1年度分の税・社保ルールの集約。 */
 export interface TaxTable {
   readonly year: TaxYear
@@ -94,6 +146,10 @@ export interface TaxTable {
   readonly socialInsurance: SocialInsuranceConfig
   readonly healthGrades: readonly StandardRemunerationGrade[]
   readonly pensionGrades: readonly StandardRemunerationGrade[]
+  /** 拡張控除（Phase 4）。その年度に制度が無ければ未設定。 */
+  readonly medicalExpense?: MedicalExpenseConfig
+  readonly lifeInsurance?: LifeInsuranceConfig
+  readonly housingLoan?: HousingLoanConfig
   /** データで表せない式変更のときのみ使用（原則 undefined）。 */
   readonly rulesetVersion?: number
 }

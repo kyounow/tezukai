@@ -16,6 +16,12 @@ export {
   specialRelativeDeduction,
   type TaxKind,
 } from './deductions/deductions'
+export {
+  medicalExpenseDeduction,
+  lifeInsuranceDeduction,
+  smallEnterpriseDeduction,
+} from './deductions/extraDeductions'
+export { housingLoanLimit, housingLoanAvailableCredit } from './deductions/housingLoan'
 
 export type {
   TaxYear,
@@ -26,6 +32,13 @@ export type {
   SocialInsuranceBreakdown,
   DeductionsBreakdown,
   ResidentTaxBreakdown,
+  MedicalExpenseInput,
+  LifeInsuranceInput,
+  LifeInsuranceCategoryInput,
+  HousingLoanInput,
+  HousingLoanCreditBreakdown,
+  HousingConstruction,
+  HousingPerformance,
 } from './types'
 
 // 年度別ルールセット（法改正対応）のレジストリを UI 向けに再エクスポート。

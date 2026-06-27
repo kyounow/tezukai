@@ -92,6 +92,39 @@ describe('年収→手取り（統合・令和7年）', () => {
     expect(withKids.residentTax).toBe(base.residentTax)
   })
 
+  it('住宅ローン控除: 所得税で引ききれない分が住民税所得割へ繰越', () => {
+    const base = { salaryIncome: 6_000_000, age: 35 }
+    const without = calculateTakeHome(base)
+    const withLoan = calculateTakeHome({
+      ...base,
+      housingLoan: { moveInYear: 2024, construction: 'new', performance: 'certified', yearEndBalance: 30_000_000 },
+    })
+    // 控除可能額 = 30,000,000×0.7% = 210,000。所得税182,500を消費し、残り27,500を住民税へ
+    expect(withLoan.housingLoanCredit.available).toBe(210_000)
+    expect(withLoan.housingLoanCredit.appliedToIncomeTax).toBe(182_500)
+    expect(withLoan.housingLoanCredit.appliedToResidentTax).toBe(27_500)
+    expect(withLoan.incomeTax).toBe(0)
+    expect(withLoan.residentTax).toBe(without.residentTax - 27_500)
+    expect(withLoan.takeHome).toBeGreaterThan(without.takeHome)
+  })
+
+  it('iDeCo・生命保険・医療費の所得控除が課税所得を下げて減税', () => {
+    const base = { salaryIncome: 6_000_000, age: 35 }
+    const without = calculateTakeHome(base)
+    const withDeductions = calculateTakeHome({
+      ...base,
+      idecoAnnual: 276_000,
+      lifeInsurance: { general: { newAmount: 100_000 } },
+      medicalExpense: { paid: 300_000 },
+    })
+    expect(withDeductions.incomeTaxDeductions.smallEnterprise).toBe(276_000)
+    expect(withDeductions.incomeTaxDeductions.lifeInsurance).toBe(40_000)
+    expect(withDeductions.incomeTaxDeductions.medical).toBe(200_000)
+    expect(withDeductions.incomeTax).toBeLessThan(without.incomeTax)
+    expect(withDeductions.residentTax).toBeLessThan(without.residentTax)
+    expect(withDeductions.takeHome).toBeGreaterThan(without.takeHome)
+  })
+
   it('40〜64歳は介護保険分だけ手取りが減る', () => {
     const young = calculateTakeHome({ salaryIncome: 5_000_000, age: 30 })
     const middle = calculateTakeHome({ salaryIncome: 5_000_000, age: 50 })
