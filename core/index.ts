@@ -18,6 +18,7 @@ export {
 } from './deductions/deductions'
 export {
   medicalExpenseDeduction,
+  medicalExpenseDetail,
   lifeInsuranceDeduction,
   smallEnterpriseDeduction,
 } from './deductions/extraDeductions'
@@ -33,6 +34,7 @@ export type {
   DeductionsBreakdown,
   ResidentTaxBreakdown,
   MedicalExpenseInput,
+  MedicalMethod,
   LifeInsuranceInput,
   LifeInsuranceCategoryInput,
   HousingLoanInput,

@@ -1,15 +1,11 @@
 import type { HousingConstruction, HousingPerformance } from '@core/index'
 import type { FormState } from '../state'
 import { eraLabel } from '../format'
+import { NumberInput } from './NumberInput'
 
 interface Props {
   form: FormState
   onChange: (patch: Partial<FormState>) => void
-}
-
-function toNumber(value: string): number {
-  const n = Number(value.replace(/[^0-9.-]/g, ''))
-  return Number.isFinite(n) ? Math.max(0, n) : 0
 }
 
 function YenField({
@@ -30,7 +26,7 @@ function YenField({
         {hint && <span className="yenfield__hint">{hint}</span>}
       </span>
       <span className="field__inline">
-        <input className="field__number" type="number" min={0} step={1000} value={value} onChange={(e) => onChange(toNumber(e.target.value))} />
+        <NumberInput className="field__number" ariaLabel={label} value={value} max={1_000_000_000} onChange={onChange} />
         <span className="field__unit">円</span>
       </span>
     </label>

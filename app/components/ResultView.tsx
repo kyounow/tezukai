@@ -68,6 +68,16 @@ export function ResultView({ result: r }: Props) {
         </tbody>
       </table>
 
+      {r.medicalExpense && (
+        <p className="result__note">
+          医療費控除は
+          <strong>
+            {r.medicalExpense.method === 'selfMedication' ? 'セルフメディケーション税制' : '通常の医療費控除'}
+          </strong>
+          を適用（控除額 {yen(r.medicalExpense.amount)}）
+        </p>
+      )}
+
       {/* 詳細 */}
       <details className="detail">
         <summary>計算の詳細を見る</summary>

@@ -41,6 +41,9 @@ export interface DependentsInput {
   specialRelativeIncomes?: number[]
 }
 
+/** 医療費控除の適用方法（通常の医療費控除／セルフメディケーション税制）。 */
+export type MedicalMethod = 'normal' | 'selfMedication'
+
 /** 医療費控除の入力（通常 と セルフメディケーションは有利な方を自動採用）。 */
 export interface MedicalExpenseInput {
   /** その年に支払った医療費の合計（円）。 */
@@ -198,6 +201,8 @@ export interface TakeHomeResult {
   residentTaxDetail: ResidentTaxBreakdown
   /** 住宅ローン控除（税額控除）の内訳。 */
   housingLoanCredit: HousingLoanCreditBreakdown
+  /** 医療費控除を適用した場合の、採用した方法と控除額（控除額が0なら未設定）。 */
+  medicalExpense?: { method: MedicalMethod; amount: number }
   /** 公租公課の合計（所得税＋住民税＋社会保険料）。 */
   totalBurden: number
   /** 手取り（額面年収−公租公課の合計）。 */

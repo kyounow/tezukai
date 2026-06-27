@@ -2,6 +2,7 @@ import { AVAILABLE_TAX_YEARS } from '@core/index'
 import type { TaxYear } from '@core/index'
 import type { FormState } from '../state'
 import { eraLabel, man } from '../format'
+import { NumberInput } from './NumberInput'
 
 interface Props {
   form: FormState
@@ -55,13 +56,12 @@ export function InputForm({ form, onChange }: Props) {
           onChange={(e) => onChange({ salaryIncome: toNumber(e.target.value) })}
         />
         <div className="field__inline">
-          <input
+          <NumberInput
             className="field__number"
-            type="number"
-            min={0}
-            step={10_000}
+            ariaLabel="額面年収"
             value={form.salaryIncome}
-            onChange={(e) => onChange({ salaryIncome: Math.max(0, toNumber(e.target.value)) })}
+            max={100_000_000}
+            onChange={(v) => onChange({ salaryIncome: v })}
           />
           <span className="field__unit">円</span>
         </div>
@@ -103,14 +103,13 @@ export function InputForm({ form, onChange }: Props) {
               <label className="field__sublabel" htmlFor="spouse-income">
                 配偶者の給与収入
               </label>
-              <input
+              <NumberInput
                 id="spouse-income"
                 className="field__number"
-                type="number"
-                min={0}
-                step={10_000}
+                ariaLabel="配偶者の給与収入"
                 value={form.spouseSalaryIncome}
-                onChange={(e) => onChange({ spouseSalaryIncome: Math.max(0, toNumber(e.target.value)) })}
+                max={100_000_000}
+                onChange={(v) => onChange({ spouseSalaryIncome: v })}
               />
               <span className="field__unit">円</span>
             </div>

@@ -12,6 +12,7 @@ import {
 import {
   lifeInsuranceDeduction,
   medicalExpenseDeduction,
+  medicalExpenseDetail,
   smallEnterpriseDeduction,
 } from './deductions/extraDeductions'
 import { housingLoanAvailableCredit } from './deductions/housingLoan'
@@ -144,6 +145,8 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const totalBurden = incomeTax + residentTaxTotal + si.total
   const takeHome = salaryIncome - totalBurden
 
+  const medicalDetail = input.medicalExpense ? medicalExpenseDetail(input.medicalExpense, totalIncome, table) : undefined
+
   return {
     taxYear: table.year,
     salaryIncome,
@@ -158,6 +161,10 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
     residentTax: residentTaxTotal,
     residentTaxDetail: resident,
     housingLoanCredit,
+    medicalExpense:
+      medicalDetail && medicalDetail.amount > 0
+        ? { method: medicalDetail.method, amount: medicalDetail.amount }
+        : undefined,
     totalBurden,
     takeHome,
   }

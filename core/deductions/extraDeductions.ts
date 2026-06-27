@@ -1,7 +1,7 @@
 import { getTaxTable } from '@data/taxTables/index'
 import type { DeductionBracket } from '@data/taxTables/2025'
 import type { TaxTable } from '@data/taxTables/types'
-import type { LifeInsuranceCategoryInput, LifeInsuranceInput, MedicalExpenseInput } from '../types'
+import type { LifeInsuranceCategoryInput, LifeInsuranceInput, MedicalExpenseInput, MedicalMethod } from '../types'
 import type { TaxKind } from './deductions'
 
 /** 段階式 deduction = 支払額×rate + plus（区分の上限は最終ブラケットの plus で表現）。 */
@@ -18,20 +18,47 @@ function bracketAmount(brackets: readonly DeductionBracket[], amount: number): n
  * 控除額 = max(0,(支払医療費−保険金等)−min(足切り額, 総所得金額等×5%))、上限あり。
  * 出典: 国税庁 No.1120 / No.1129。
  */
+export interface MedicalExpenseDetail {
+  /** 採用した控除額（有利な方）。 */
+  amount: number
+  /** 採用した方法。 */
+  method: MedicalMethod
+  /** 通常の医療費控除の額。 */
+  normal: number
+  /** セルフメディケーション税制の額。 */
+  selfMedication: number
+}
+
+/** 医療費控除の通常・セルフメディケーション両方を計算し、有利な方と採用方法を返す。 */
+export function medicalExpenseDetail(
+  input: MedicalExpenseInput,
+  totalIncome: number,
+  table: TaxTable = getTaxTable(),
+): MedicalExpenseDetail {
+  const cfg = table.medicalExpense
+  if (!cfg) return { amount: 0, method: 'normal', normal: 0, selfMedication: 0 }
+  const floor = Math.min(cfg.floorAmount, Math.floor(Math.max(0, totalIncome) * cfg.floorRate))
+  const normal = Math.min(cfg.cap, Math.max(0, (input.paid ?? 0) - (input.reimbursed ?? 0) - floor))
+  const selfMedication = Math.min(
+    cfg.selfMedication.cap,
+    Math.max(0, (input.selfMedicationPaid ?? 0) - cfg.selfMedication.floor),
+  )
+  // 同額・両方0のときは通常を採用。
+  const useSelfMed = selfMedication > normal
+  return {
+    amount: useSelfMed ? selfMedication : normal,
+    method: useSelfMed ? 'selfMedication' : 'normal',
+    normal,
+    selfMedication,
+  }
+}
+
 export function medicalExpenseDeduction(
   input: MedicalExpenseInput,
   totalIncome: number,
   table: TaxTable = getTaxTable(),
 ): number {
-  const cfg = table.medicalExpense
-  if (!cfg) return 0
-  const floor = Math.min(cfg.floorAmount, Math.floor(Math.max(0, totalIncome) * cfg.floorRate))
-  const normal = Math.min(cfg.cap, Math.max(0, (input.paid ?? 0) - (input.reimbursed ?? 0) - floor))
-  const selfMed = Math.min(
-    cfg.selfMedication.cap,
-    Math.max(0, (input.selfMedicationPaid ?? 0) - cfg.selfMedication.floor),
-  )
-  return Math.max(normal, selfMed)
+  return medicalExpenseDetail(input, totalIncome, table).amount
 }
 
 /**

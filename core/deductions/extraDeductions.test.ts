@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { medicalExpenseDeduction, lifeInsuranceDeduction, smallEnterpriseDeduction } from './extraDeductions'
+import { medicalExpenseDeduction, medicalExpenseDetail, lifeInsuranceDeduction, smallEnterpriseDeduction } from './extraDeductions'
 
 describe('医療費控除', () => {
   it('通常: (支払−保険金)−min(10万, 総所得×5%)', () => {
@@ -22,6 +22,19 @@ describe('医療費控除', () => {
   })
   it('通常とセルフメディケーションは有利な方を自動採用', () => {
     expect(medicalExpenseDeduction({ paid: 300_000, selfMedicationPaid: 200_000 }, 5_000_000)).toBe(200_000)
+  })
+
+  it('採用した方法を返す（通常 / セルフメディケーション）', () => {
+    // 通常20万 > セルフ8.8万 → 通常
+    expect(medicalExpenseDetail({ paid: 300_000, selfMedicationPaid: 200_000 }, 5_000_000)).toMatchObject({
+      method: 'normal',
+      amount: 200_000,
+    })
+    // 通常0（足切り以下）< セルフ1.8万 → セルフメディケーション
+    expect(medicalExpenseDetail({ paid: 80_000, selfMedicationPaid: 30_000 }, 5_000_000)).toMatchObject({
+      method: 'selfMedication',
+      amount: 18_000,
+    })
   })
 })
 

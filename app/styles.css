@@ -270,6 +270,13 @@ body {
 .summary--detail {
   margin-top: 0.4rem;
 }
+.result__note {
+  margin: 0.8rem 0 0;
+  padding: 0.6rem 0.75rem;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
 .detail {
   margin-top: 1rem;
 }
