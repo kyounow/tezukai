@@ -26,6 +26,14 @@ describe('年収→手取り（統合・令和7年）', () => {
     expect(r.takeHome).toBe(3_914_640)
   })
 
+  it('外部の手取り早見表とオーダー一致（年収500万・単身）', () => {
+    // 独立リサーチで収集した外部例（社保≒72万・手取り≒390万）と概ね一致。
+    // 所得税は外部(令和5基準)より低め＝令和7改正の基礎控除引上げと整合。
+    const r = calculateTakeHome({ salaryIncome: 5_000_000, age: 30 })
+    expect(Math.abs(r.socialInsurance.total - 720_000)).toBeLessThan(720_000 * 0.02)
+    expect(Math.abs(r.takeHome - 3_900_000)).toBeLessThan(3_900_000 * 0.02)
+  })
+
   it('内訳の整合性（手取り = 年収 − 所得税 − 住民税 − 社保）', () => {
     const r = calculateTakeHome({ salaryIncome: 7_000_000, age: 42 })
     expect(r.totalBurden).toBe(r.incomeTax + r.residentTax + r.socialInsurance.total)

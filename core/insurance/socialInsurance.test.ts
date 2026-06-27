@@ -52,11 +52,28 @@ describe('社会保険料（本人負担・年額・近似）', () => {
     expect(middle.total).toBe(young.total + middle.longTermCare)
   })
 
-  it('高収入は標準報酬月額の上限でクランプ（厚年650,000・健保1,390,000）', () => {
+  it('高収入は標準報酬月額の上限（厚年650,000・健保1,390,000）', () => {
     const r = socialInsurance(20_000_000, 30)
     // 厚年: 650,000×9.15%=59,475 ×12、健保: 1,390,000×4.955%=68,874.5→68,874 ×12
     expect(r.pension).toBe(713_700)
     expect(r.health).toBe(826_488)
     expect(r.employment).toBe(110_000)
+  })
+})
+
+// 協会けんぽ(東京)令和7年度・日本年金機構の料額表「折半額」と一致することを確認。
+// 折半額は独立リサーチ(一次情報)で全等級を突合済み。
+describe('公式料額表の折半額と一致', () => {
+  it('標準報酬月額20万: 健保9,910円・厚年18,300円（月額×12）', () => {
+    const r = socialInsurance(2_400_000, 30) // 月額20万ちょうど
+    expect(r.health).toBe(9_910 * 12)
+    expect(r.pension).toBe(18_300 * 12)
+  })
+
+  it('標準報酬月額30万・介護込み: 健保14,865＋介護2,385＝折半17,250円（月額）', () => {
+    const r = socialInsurance(3_600_000, 50) // 月額30万・介護第2号該当
+    expect(r.health).toBe(14_865 * 12)
+    expect(r.longTermCare).toBe(2_385 * 12)
+    expect(r.health / 12 + r.longTermCare / 12).toBe(17_250)
   })
 })
