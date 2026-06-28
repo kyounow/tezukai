@@ -75,7 +75,12 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
         {/* 生命保険料控除 */}
         <fieldset className="extra__group">
           <legend>生命保険料控除（年間支払保険料）</legend>
-          <YenField label="一般生命保険料・新制度（H24以降契約）" value={form.lifeGeneralNew} onChange={(v) => onChange({ lifeGeneralNew: v })} />
+          <p className="extra__note">
+            ※ 新制度／旧制度は<strong>契約の締結日</strong>で決まります（平成24年1月1日以後＝新制度、平成23年12月31日以前＝旧制度。
+            商品の発売年ではありません）。生命保険料控除証明書に「新」「旧」の表示があります。なお旧契約でも平成24年1月1日以後に
+            更新・転換・特約の中途付加をした場合はその契約全体が新制度扱いになります。
+          </p>
+          <YenField label="一般生命保険料・新制度（H24.1.1以後の契約）" value={form.lifeGeneralNew} onChange={(v) => onChange({ lifeGeneralNew: v })} />
           <YenField label="一般生命保険料・旧制度（H23以前契約）" value={form.lifeGeneralOld} onChange={(v) => onChange({ lifeGeneralOld: v })} />
           <YenField label="介護医療保険料（新制度のみ）" value={form.lifeNursingNew} onChange={(v) => onChange({ lifeNursingNew: v })} />
           <YenField label="個人年金保険料・新制度" value={form.lifePensionNew} onChange={(v) => onChange({ lifePensionNew: v })} />

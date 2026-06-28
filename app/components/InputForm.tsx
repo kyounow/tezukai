@@ -228,7 +228,8 @@ function CountField({
         type="number"
         min={0}
         max={20}
-        value={value}
+        placeholder="0"
+        value={value === 0 ? '' : value}
         onChange={(e) => onChange(Math.max(0, Math.min(20, toNumber(e.target.value))))}
       />
     </label>
