@@ -119,6 +119,20 @@ describe('組合健保（本人負担率を手入力）', () => {
     const def = socialInsurance(2_400_000, 30, t2025)
     expect(explicit).toEqual(def)
   })
+
+  it('子ども・子育て支援金（令和8〜）を組合健保の健保に上乗せ（NTT健保 R8）', () => {
+    const t2026 = getTaxTable(2026)
+    // NTT健保 令和8: 健保4.56%＋子育て支援金0.115%（本人負担）。年収500万→標準報酬41万
+    const withSupport = socialInsurance(5_000_000, 30, t2026, undefined, {
+      type: 'kumiai',
+      kumiaiHealthRate: 0.0456,
+      kumiaiChildSupportRate: 0.00115,
+    })
+    const without = socialInsurance(5_000_000, 30, t2026, undefined, { type: 'kumiai', kumiaiHealthRate: 0.0456 })
+    expect(without.health).toBe(224_352) // 410,000×4.56%×12
+    expect(withSupport.health).toBe(230_004) // 410,000×(4.56%+0.115%)×12
+    expect(withSupport.health).toBeGreaterThan(without.health)
+  })
 })
 
 // 協会けんぽ(東京)令和7年度・日本年金機構の料額表「折半額」と一致することを確認。

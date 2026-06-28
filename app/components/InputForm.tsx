@@ -226,9 +226,9 @@ export function InputForm({ form, onChange }: Props) {
       {form.healthInsuranceType === 'kumiai' && (
         <>
           <p className="field__note">
-            給与明細や健保組合のサイトに記載の<strong>被保険者（本人）負担の保険料率</strong>を入力してください。
-            組合健保は事業主が折半より多く負担することが多く、協会けんぽより安い場合があります（労使合計の料率しか分からない場合は半分が目安）。
-            厚生年金・雇用保険は変わりません。
+            既定は<strong>NTT健康保険組合（令和8年度・本人負担分）</strong>の料率です。給与明細や健保組合のサイトに記載の
+            <strong>被保険者（本人）負担の保険料率</strong>を入力してください。組合健保は事業主が折半より多く負担することが多く、
+            協会けんぽより安い場合があります（労使合計の料率しか分からない場合は半分が目安）。厚生年金・雇用保険は変わりません。
           </p>
           <RateField
             id="kumiai-health"
@@ -237,6 +237,15 @@ export function InputForm({ form, onChange }: Props) {
             max={20}
             onCommit={(v) => onChange({ kumiaiHealthRatePct: v })}
           />
+          {form.taxYear >= 2026 && (
+            <RateField
+              id="kumiai-child-support"
+              label="子ども・子育て支援金率（本人負担・令和8〜）"
+              value={form.kumiaiChildSupportRatePct}
+              max={5}
+              onCommit={(v) => onChange({ kumiaiChildSupportRatePct: v })}
+            />
+          )}
           {form.age >= 40 && form.age <= 64 ? (
             <RateField
               id="kumiai-care"

@@ -53,9 +53,10 @@ export function socialInsurance(
   const isCareInsured = age >= si.longTermCare.minAge && age <= si.longTermCare.maxAge
 
   // 被保険者（本人）負担の料率。協会けんぽは労使合計÷2、組合健保は手入力の本人負担率をそのまま使う。
+  // 子ども・子育て支援金（令和8年度〜）は健保に上乗せ（協会けんぽ＝childSupportRate、組合＝手入力）。
   const isKumiai = healthInsurance?.type === 'kumiai'
   const healthEmployeeRate = isKumiai
-    ? Math.max(0, healthInsurance?.kumiaiHealthRate ?? 0)
+    ? Math.max(0, healthInsurance?.kumiaiHealthRate ?? 0) + Math.max(0, healthInsurance?.kumiaiChildSupportRate ?? 0)
     : (si.health.rate + (si.health.childSupportRate ?? 0)) / 2
   const careEmployeeRate = isKumiai ? Math.max(0, healthInsurance?.kumiaiCareRate ?? 0) : si.longTermCare.rate / 2
   const pensionEmployeeRate = si.pension.rate / 2

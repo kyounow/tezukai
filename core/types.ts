@@ -149,10 +149,12 @@ export type TaxpayerMode = 'employee' | 'soleProprietor'
 export interface HealthInsuranceInput {
   /** kyokai＝協会けんぽ（年度テーブルの料率を折半）、kumiai＝組合健保（本人負担率を手入力）。 */
   type: 'kyokai' | 'kumiai'
-  /** 組合健保の被保険者（本人）負担の健康保険料率（割合。例 0.0495＝4.95%）。 */
+  /** 組合健保の被保険者（本人）負担の健康保険料率（割合。例 0.0456＝4.56%）。 */
   kumiaiHealthRate?: number
   /** 組合健保の被保険者（本人）負担の介護保険料率（割合）。40〜64歳のみ適用。 */
   kumiaiCareRate?: number
+  /** 組合健保の被保険者（本人）負担の子ども・子育て支援金率（割合。令和8年度〜）。健保に上乗せ。 */
+  kumiaiChildSupportRate?: number
 }
 
 /** 青色申告特別控除の区分（白色＝none）。 */

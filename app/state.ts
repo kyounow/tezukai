@@ -31,6 +31,8 @@ export interface FormState {
   kumiaiHealthRatePct: number
   /** 組合健保の本人負担の介護保険料率（%・40〜64歳）。 */
   kumiaiCareRatePct: number
+  /** 組合健保の本人負担の子ども・子育て支援金率（%・令和8年度〜）。 */
+  kumiaiChildSupportRatePct: number
   /** 本人の年齢。 */
   age: number
   /** 配偶者の有無。 */
@@ -112,9 +114,14 @@ export const defaultForm: FormState = {
   monthlySalary: 300_000,
   annualBonus: 1_000_000,
   bonusCount: 2,
-  healthInsuranceType: 'kyokai',
-  kumiaiHealthRatePct: 4.95,
-  kumiaiCareRatePct: 0.79,
+  // 既定はNTT健康保険組合（令和8年度・本人負担分）の料率。協会けんぽに切替も可。
+  // 出典: NTT健保 公式「R8.4.1～ 保険料・掛金額（一般）本人負担分」
+  //   健保 45.6/1000(4.56%)・介護 7.7/1000(0.77%)・子ども子育て支援金 1.15/1000(0.115%)。
+  //   https://www.nttkenpo.jp/member/outline/files/getsugaku.pdf
+  healthInsuranceType: 'kumiai',
+  kumiaiHealthRatePct: 4.56,
+  kumiaiCareRatePct: 0.77,
+  kumiaiChildSupportRatePct: 0.115,
   age: 35,
   hasSpouse: false,
   spouseSalaryIncome: 0,
@@ -171,7 +178,13 @@ export function toInput(f: FormState): TakeHomeInput {
       : undefined,
     healthInsurance:
       !sole && f.healthInsuranceType === 'kumiai'
-        ? { type: 'kumiai', kumiaiHealthRate: f.kumiaiHealthRatePct / 100, kumiaiCareRate: f.kumiaiCareRatePct / 100 }
+        ? {
+            type: 'kumiai',
+            kumiaiHealthRate: f.kumiaiHealthRatePct / 100,
+            kumiaiCareRate: f.kumiaiCareRatePct / 100,
+            // 子ども・子育て支援金は令和8年度（2026）〜
+            kumiaiChildSupportRate: f.taxYear >= 2026 ? f.kumiaiChildSupportRatePct / 100 : 0,
+          }
         : undefined,
     age: f.age,
     spouse: f.hasSpouse ? { salaryIncome: f.spouseSalaryIncome, elderly: f.spouseElderly } : undefined,
