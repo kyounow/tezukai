@@ -269,8 +269,8 @@ export function InputForm({ form, onChange }: Props) {
       </div>
 
       {/* 扶養親族 */}
-      <div className="field">
-        <span className="field__label">扶養親族の人数</span>
+      <fieldset className="field">
+        <legend className="field__label">扶養親族の人数</legend>
         <div className="field__grid">
           <CountField
             label="年少（16歳未満）"
@@ -303,7 +303,7 @@ export function InputForm({ form, onChange }: Props) {
             onChange={(v) => onChange({ depElderlyOther: v })}
           />
         </div>
-      </div>
+      </fieldset>
     </section>
   )
 }

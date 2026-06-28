@@ -56,8 +56,10 @@ const PERFORMANCES: { value: HousingPerformance; label: string }[] = [
 
 export function ExtraDeductionsForm({ form, onChange }: Props) {
   return (
-    <details className="card extra">
-      <summary className="extra__summary">拡張控除（任意）— 医療費・生命保険・地震保険・iDeCo・住宅ローン控除</summary>
+    <>
+      <h2 className="sr-only">拡張控除（任意）</h2>
+      <details className="card extra">
+        <summary className="extra__summary">拡張控除（任意）— 医療費・生命保険・地震保険・iDeCo・住宅ローン控除</summary>
       <div className="extra__body">
         {/* 医療費控除 */}
         <fieldset className="extra__group">
@@ -212,6 +214,7 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
         </fieldset>
         )}
       </div>
-    </details>
+      </details>
+    </>
   )
 }

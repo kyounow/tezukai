@@ -5,11 +5,12 @@ interface Props {
   result: TakeHomeResult
 }
 
+// テーマ変数で定義（ダークモードで明度を上げてコントラストを確保）。
 const SEGMENT_COLORS = {
-  takeHome: '#0b6e4f',
-  social: '#3b82f6',
-  incomeTax: '#f59e0b',
-  residentTax: '#ef4444',
+  takeHome: 'var(--seg-takehome)',
+  social: 'var(--seg-social)',
+  incomeTax: 'var(--seg-incometax)',
+  residentTax: 'var(--seg-residenttax)',
 } as const
 
 export function ResultView({ result: r }: Props) {
@@ -30,7 +31,7 @@ export function ResultView({ result: r }: Props) {
       <h2 className="card__heading">計算結果（{eraLabel(r.taxYear)}・概算）</h2>
 
       <div className="result__headline">
-        <div className="result__takehome">
+        <div className="result__takehome" role="status" aria-live="polite" aria-atomic="true">
           <span className="result__takehome-label">年間手取り</span>
           <span className="result__takehome-value">{yen(r.takeHome)}</span>
           <span className="result__takehome-sub">
@@ -39,8 +40,8 @@ export function ResultView({ result: r }: Props) {
         </div>
       </div>
 
-      {/* 内訳バー */}
-      <div className="bar" role="img" aria-label="年収の内訳">
+      {/* 内訳バー（情報は下の凡例・表が正本。バー自体は装飾） */}
+      <div className="bar" aria-hidden="true">
         {segments.map((s) => (
           <div
             key={s.key}
@@ -73,6 +74,13 @@ export function ResultView({ result: r }: Props) {
           <Row label="年間手取り" value={yen(r.takeHome)} strong highlight />
         </tbody>
       </table>
+
+      {isSole && (
+        <p className="result__note">
+          ※ 国民健康保険は<strong>東京特別区</strong>の率による概算です（所得割は本人の所得のみ・均等割×加入人数。世帯員の所得や自治体差は未反映）。
+          {r.taxYear === 2026 && <>令和8年度の保険料率は未公表のため<strong>令和7年度率で概算</strong>しています。</>}
+        </p>
+      )}
 
       {r.medicalExpense && (
         <p className="result__note">

@@ -96,7 +96,11 @@ export function FurusatoView({ furusato: f, actual: a, form, onChange }: Props) 
 
           {hasDonation && (
             <>
-              <div className={`furusato__status ${a.withinLimit ? 'furusato__status--ok' : 'furusato__status--over'}`}>
+              <div
+                role="status"
+                aria-live="polite"
+                className={`furusato__status ${a.withinLimit ? 'furusato__status--ok' : 'furusato__status--over'}`}
+              >
                 {a.withinLimit ? (
                   <>上限内 ✓ ／ 実質自己負担 {yen(selfBurden)}</>
                 ) : (
