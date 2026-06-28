@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { socialInsurance, roundPremium, standardRemuneration } from './socialInsurance'
 import { HEALTH_GRADES_2025, PENSION_GRADES_2025 } from '@data/taxTables/2025'
+import { getTaxTable } from '@data/taxTables/index'
 
 describe('標準報酬月額の等級判定', () => {
   it('健保: 報酬月額→標準報酬月額', () => {
@@ -58,6 +59,32 @@ describe('社会保険料（本人負担・年額・近似）', () => {
     expect(r.pension).toBe(713_700)
     expect(r.health).toBe(826_488)
     expect(r.employment).toBe(110_000)
+  })
+})
+
+describe('賞与分離モード（月給＋賞与）', () => {
+  const t2025 = getTaxTable(2025)
+  it('月給30万＋賞与100万/年・30歳: 月額分＋賞与分を別計算', () => {
+    const r = socialInsurance(4_600_000, 30, t2025, { monthlySalary: 300_000, annualBonus: 1_000_000, bonusCount: 2 })
+    // 月額: 健保 30万×4.955%×12=178,380、厚年 30万×9.15%×12=329,400
+    // 賞与: 健保 100万×4.955%=49,550、厚年 100万×9.15%=91,500
+    expect(r.health).toBe(178_380 + 49_550)
+    expect(r.pension).toBe(329_400 + 91_500)
+    expect(r.employment).toBe(25_300) // 460万×0.55%
+  })
+
+  it('簡易モードと賞与分離モードで社保額が異なる', () => {
+    const simple = socialInsurance(4_600_000, 30, t2025)
+    const detailed = socialInsurance(4_600_000, 30, t2025, { monthlySalary: 300_000, annualBonus: 1_000_000 })
+    expect(detailed.total).not.toBe(simple.total)
+  })
+
+  it('標準賞与額の上限（健保 年度573万・厚年 月150万×回数）が効く', () => {
+    const r = socialInsurance(14_200_000, 30, t2025, { monthlySalary: 600_000, annualBonus: 7_000_000, bonusCount: 2 })
+    // 健保賞与は573万で頭打ち、厚年賞与は150万×2=300万で頭打ち
+    const capped = socialInsurance(14_200_000, 30, t2025, { monthlySalary: 600_000, annualBonus: 5_730_000, bonusCount: 2 })
+    // 健保は同額（どちらも573万でクランプ）
+    expect(r.health).toBe(capped.health)
   })
 })
 

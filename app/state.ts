@@ -5,8 +5,16 @@ import type { HousingConstruction, HousingPerformance, TakeHomeInput, TaxYear } 
 export interface FormState {
   /** 対象年度（税制ルールセットの選択）。 */
   taxYear: TaxYear
-  /** 額面年収（円）。 */
+  /** 額面年収（円。簡易モード用）。 */
   salaryIncome: number
+  /** 賞与分離モード（社保を月給＋賞与で精密計算）。 */
+  bonusMode: boolean
+  /** 月給（月額・円。賞与分離モード用）。 */
+  monthlySalary: number
+  /** 年間賞与（円。賞与分離モード用）。 */
+  annualBonus: number
+  /** 賞与の支給回数。 */
+  bonusCount: number
   /** 本人の年齢。 */
   age: number
   /** 配偶者の有無。 */
@@ -66,6 +74,10 @@ export interface FormState {
 export const defaultForm: FormState = {
   taxYear: LATEST_TAX_YEAR,
   salaryIncome: 5_000_000,
+  bonusMode: false,
+  monthlySalary: 300_000,
+  annualBonus: 1_000_000,
+  bonusCount: 2,
   age: 35,
   hasSpouse: false,
   spouseSalaryIncome: 0,
@@ -105,9 +117,13 @@ export const defaultForm: FormState = {
 
 /** フォーム状態をコア計算の入力に変換する。 */
 export function toInput(f: FormState): TakeHomeInput {
+  const salaryIncome = f.bonusMode ? f.monthlySalary * 12 + f.annualBonus : f.salaryIncome
   return {
     taxYear: f.taxYear,
-    salaryIncome: f.salaryIncome,
+    salaryIncome,
+    salaryBreakdown: f.bonusMode
+      ? { monthlySalary: f.monthlySalary, annualBonus: f.annualBonus, bonusCount: f.bonusCount }
+      : undefined,
     age: f.age,
     spouse: f.hasSpouse ? { salaryIncome: f.spouseSalaryIncome, elderly: f.spouseElderly } : undefined,
     dependents: {

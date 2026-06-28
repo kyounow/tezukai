@@ -121,12 +121,27 @@ export interface IncomeAdjustmentInput {
   specialDisabilityFamily?: boolean
 }
 
+/**
+ * 賞与を分離した給与の内訳（社会保険料の精密計算に使用）。
+ * これが指定されると社保は 月給→標準報酬月額 と 賞与→標準賞与額 で別々に計算する。
+ */
+export interface SalaryBreakdown {
+  /** 月給（月額・円）。標準報酬月額の判定に使用。 */
+  monthlySalary: number
+  /** 年間の賞与合計（円）。標準賞与額の上限判定に使用。 */
+  annualBonus: number
+  /** 賞与の支給回数（厚年の月150万上限の判定に使用。省略時2）。 */
+  bonusCount?: number
+}
+
 /** 手取り計算への入力。 */
 export interface TakeHomeInput {
   /** 対象年度（省略時 2025）。 */
   taxYear?: TaxYear
-  /** 給与収入（額面年収・円）。 */
+  /** 給与収入（額面年収・円）。賞与分離時は monthlySalary×12＋annualBonus に一致させる。 */
   salaryIncome: number
+  /** 賞与を分離して社保を精密計算する場合の内訳（省略時は年収÷12の簡易計算）。 */
+  salaryBreakdown?: SalaryBreakdown
   /** 本人の年齢。介護保険第2号被保険者（40〜64歳）の判定に使用。 */
   age: number
   /** 配偶者（いなければ省略）。 */

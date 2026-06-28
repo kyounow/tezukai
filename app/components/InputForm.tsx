@@ -39,33 +39,76 @@ export function InputForm({ form, onChange }: Props) {
         </select>
       </div>
 
-      {/* 年収 */}
+      {/* 賞与分離モードの切替 */}
       <div className="field">
-        <label className="field__label" htmlFor="salary">
-          額面年収
-          <span className="field__hint">{man(form.salaryIncome)}</span>
+        <label className="field__check field__check--small">
+          <input type="checkbox" checked={form.bonusMode} onChange={(e) => onChange({ bonusMode: e.target.checked })} />
+          賞与を分けて社会保険料を精密に計算する
         </label>
-        <input
-          id="salary"
-          className="field__range"
-          type="range"
-          min={0}
-          max={20_000_000}
-          step={100_000}
-          value={form.salaryIncome}
-          onChange={(e) => onChange({ salaryIncome: toNumber(e.target.value) })}
-        />
-        <div className="field__inline">
-          <NumberInput
-            className="field__number"
-            ariaLabel="額面年収"
-            value={form.salaryIncome}
-            max={100_000_000}
-            onChange={(v) => onChange({ salaryIncome: v })}
-          />
-          <span className="field__unit">円</span>
-        </div>
       </div>
+
+      {form.bonusMode ? (
+        <>
+          <div className="field">
+            <label className="field__label" htmlFor="monthly-salary">
+              月給（月額）
+              <span className="field__hint">標準報酬月額の基礎</span>
+            </label>
+            <div className="field__inline">
+              <NumberInput id="monthly-salary" className="field__number" ariaLabel="月給" value={form.monthlySalary} max={10_000_000} onChange={(v) => onChange({ monthlySalary: v })} />
+              <span className="field__unit">円</span>
+            </div>
+          </div>
+          <div className="field">
+            <label className="field__label" htmlFor="annual-bonus">
+              年間賞与（合計）
+            </label>
+            <div className="field__inline">
+              <NumberInput id="annual-bonus" className="field__number" ariaLabel="年間賞与" value={form.annualBonus} max={100_000_000} onChange={(v) => onChange({ annualBonus: v })} />
+              <span className="field__unit">円</span>
+            </div>
+          </div>
+          <div className="field">
+            <label className="field__label" htmlFor="bonus-count">
+              賞与の支給回数
+              <span className="field__hint">額面年収 ≒ {man(form.monthlySalary * 12 + form.annualBonus)}</span>
+            </label>
+            <div className="field__inline">
+              <input
+                id="bonus-count"
+                className="field__number field__number--narrow"
+                type="number"
+                min={1}
+                max={12}
+                value={form.bonusCount}
+                onChange={(e) => onChange({ bonusCount: Math.max(1, Math.min(12, toNumber(e.target.value))) })}
+              />
+              <span className="field__unit">回</span>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="field">
+          <label className="field__label" htmlFor="salary">
+            額面年収
+            <span className="field__hint">{man(form.salaryIncome)}</span>
+          </label>
+          <input
+            id="salary"
+            className="field__range"
+            type="range"
+            min={0}
+            max={20_000_000}
+            step={100_000}
+            value={form.salaryIncome}
+            onChange={(e) => onChange({ salaryIncome: toNumber(e.target.value) })}
+          />
+          <div className="field__inline">
+            <NumberInput className="field__number" ariaLabel="額面年収" value={form.salaryIncome} max={100_000_000} onChange={(v) => onChange({ salaryIncome: v })} />
+            <span className="field__unit">円</span>
+          </div>
+        </div>
+      )}
 
       {/* 年齢 */}
       <div className="field">

@@ -30,6 +30,7 @@ export type {
   TaxYear,
   TakeHomeInput,
   TakeHomeResult,
+  SalaryBreakdown,
   SpouseInput,
   DependentsInput,
   SocialInsuranceBreakdown,

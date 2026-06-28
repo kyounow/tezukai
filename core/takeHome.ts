@@ -120,7 +120,7 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const otherTotal = input.otherIncome ? otherIncomeTotal(input.otherIncome) : 0
   // 合計所得 = 給与所得 − 所得金額調整控除 ＋ 給与以外の所得（損益通算後）
   const totalIncome = Math.max(0, empIncome - incomeAdjust + otherTotal)
-  const si = socialInsurance(salaryIncome, input.age, table)
+  const si = socialInsurance(salaryIncome, input.age, table, input.salaryBreakdown)
 
   const incomeTaxDeductions = buildDeductions('incomeTax', totalIncome, si.total, input, table)
   const residentTaxDeductions = buildDeductions('residentTax', totalIncome, si.total, input, table)
