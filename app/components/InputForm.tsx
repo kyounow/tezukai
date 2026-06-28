@@ -14,6 +14,18 @@ function toNumber(value: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
+/** 額面年収スライダー／数値入力の上限（1億円）。両者を一致させる。 */
+const SALARY_MAX = 100_000_000
+/** スライダーの目盛り（ガイド）ラベル。 */
+const SALARY_TICKS: { value: number; label: string }[] = [
+  { value: 0, label: '0' },
+  { value: 20_000_000, label: '2000万' },
+  { value: 40_000_000, label: '4000万' },
+  { value: 60_000_000, label: '6000万' },
+  { value: 80_000_000, label: '8000万' },
+  { value: 100_000_000, label: '1億' },
+]
+
 export function InputForm({ form, onChange }: Props) {
   return (
     <section className="card form" aria-label="入力">
@@ -161,20 +173,35 @@ export function InputForm({ form, onChange }: Props) {
         <div className="field">
           <label className="field__label" htmlFor="salary">
             額面年収
-            <span className="field__hint">{man(form.salaryIncome)}</span>
+            {/* 現在値はスライダーのアクセシブル名に混ぜず、視覚表示のみ（読み上げは aria-valuetext で行う）。 */}
+            <span className="field__hint" aria-hidden="true">{man(form.salaryIncome)}</span>
           </label>
           <input
             id="salary"
             className="field__range"
             type="range"
             min={0}
-            max={20_000_000}
+            max={SALARY_MAX}
             step={100_000}
-            value={form.salaryIncome}
+            value={Math.min(form.salaryIncome, SALARY_MAX)}
+            aria-valuetext={man(Math.min(form.salaryIncome, SALARY_MAX))}
             onChange={(e) => onChange({ salaryIncome: toNumber(e.target.value) })}
           />
+          <div className="field__scale" aria-hidden="true">
+            <div className="field__scale-inner">
+              {SALARY_TICKS.map((t) => (
+                <span
+                  key={t.value}
+                  className="field__scale-tick"
+                  style={{ left: `${(t.value / SALARY_MAX) * 100}%` }}
+                >
+                  {t.label}
+                </span>
+              ))}
+            </div>
+          </div>
           <div className="field__inline">
-            <NumberInput className="field__number" ariaLabel="額面年収" value={form.salaryIncome} max={100_000_000} onChange={(v) => onChange({ salaryIncome: v })} />
+            <NumberInput className="field__number" ariaLabel="額面年収（数値入力）" value={form.salaryIncome} max={SALARY_MAX} onChange={(v) => onChange({ salaryIncome: v })} />
             <span className="field__unit">円</span>
           </div>
         </div>

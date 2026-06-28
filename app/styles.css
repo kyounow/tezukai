@@ -86,6 +86,36 @@ body {
 .field__range {
   width: 100%;
   accent-color: var(--accent);
+  margin: 0;
+}
+/* スライダーの目盛り（ガイド）。つまみ位置に合わせて約9px内側へ寄せる。 */
+.field__scale {
+  padding: 0 9px;
+  margin-top: 0.1rem;
+}
+.field__scale-inner {
+  position: relative;
+  height: 1.5em;
+}
+.field__scale-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  padding-top: 7px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.field__scale-tick::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1px;
+  height: 6px;
+  /* --border はカード背景とのコントラストが低く暗所で見えないため --muted ベースに。 */
+  background: color-mix(in srgb, var(--muted) 65%, transparent);
 }
 .field__inline {
   display: flex;
