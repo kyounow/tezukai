@@ -9,6 +9,8 @@
   --card-bg: #ffffff;
   --border: #e3e8ee;
   --accent: #0b6e4f;
+  --warn: #a14a14;
+  --warn-bg: color-mix(in srgb, #e8821e 16%, transparent);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
@@ -409,6 +411,77 @@ body {
   color: var(--muted);
 }
 
+/* ---- ふるさと納税 実績シミュレーション ---- */
+.furusato__actual {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+.furusato__subheading {
+  margin: 0 0 0.3rem;
+  font-size: 1.05rem;
+  color: var(--accent);
+}
+.furusato__method {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  margin: 0.5rem 0 0.7rem;
+}
+.furusato__radio {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+.furusato__status {
+  margin: 0.7rem 0 0.2rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.furusato__status--ok {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.furusato__status--over {
+  color: var(--warn);
+  background: var(--warn-bg);
+}
+.furusato__hint {
+  display: block;
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.furusato__nextyear {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.7rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+.furusato__nextyear-label {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.furusato__nextyear-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.furusato__arrow {
+  color: var(--muted);
+  margin: 0 0.2rem;
+}
+.furusato__nextyear-sub {
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+
 /* ---- Footer ---- */
 .app__footer {
   margin-top: 1.5rem;
@@ -427,6 +500,8 @@ body {
     --card-bg: #1f2428;
     --border: #2c343a;
     --accent: #3ddc97;
+    --warn: #f0a868;
+    --warn-bg: color-mix(in srgb, #e8821e 22%, transparent);
     --shadow: none;
   }
 }

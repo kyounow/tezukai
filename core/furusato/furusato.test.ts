@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { furusatoLimit, marginalIncomeTaxRate } from './furusato'
+import { furusatoLimit, furusatoActual, marginalIncomeTaxRate } from './furusato'
+import { calculateTakeHome } from '../takeHome'
 import { getTaxTable } from '@data/taxTables/index'
 
 describe('所得税の限界税率', () => {
@@ -58,5 +59,63 @@ describe('ふるさと納税 控除上限額', () => {
     const without = furusatoLimit(base)
     const withIdeco = furusatoLimit({ ...base, idecoAnnual: 276_000 })
     expect(withIdeco.limit).toBeLessThan(without.limit)
+  })
+})
+
+describe('ふるさと納税 実績シミュレーション（次年度住民税）', () => {
+  const table = getTaxTable()
+  // 年収500万・単身（住民税所得割238,200・限界税率10%・上限61,706）
+  const result = calculateTakeHome({ salaryIncome: 5_000_000, age: 30 })
+
+  it('上限内（6.1万円）: 3階建て控除・実質負担約2,000円', () => {
+    const a = furusatoActual(result, 61_000, table)
+    expect(a.withinLimit).toBe(true)
+    expect(a.residentSpecialCapped).toBe(false)
+    // 所得税(59,000×10%×1.021)、住民税基本(59,000×10%)、特例(59,000×(0.9−0.1021))
+    expect(a.incomeTaxCredit).toBe(6_023)
+    expect(a.residentBasicCredit).toBe(5_900)
+    expect(a.residentSpecialCredit).toBe(47_076)
+    expect(a.totalCreditFiling).toBe(58_999)
+    expect(a.selfBurdenFiling).toBe(2_001)
+    // ワンストップの申告特例控除（特例×割合の切上げ）。上限内なら自己負担はほぼ2,000円
+    expect(a.declarationSpecialCredit).toBe(6_024)
+    expect(a.selfBurdenOneStop).toBe(2_000)
+  })
+
+  it('上限内: 翌年度住民税は ワンストップ＝全額／確定申告＝基本＋特例 だけ下がる', () => {
+    const a = furusatoActual(result, 61_000, table)
+    expect(a.residentControlFiling).toBe(52_976) // 基本5,900＋特例47,076
+    expect(a.residentControlOneStop).toBe(59_000) // ＋申告特例6,024
+    expect(a.residentTaxBefore).toBeGreaterThan(0)
+    expect(a.residentTaxAfterFiling).toBe(a.residentTaxBefore - 52_976)
+    expect(a.residentTaxAfterOneStop).toBe(a.residentTaxBefore - 59_000)
+    // 上限内ではワンストップの方が住民税は多く下がる（所得税分も住民税から）
+    expect(a.residentTaxAfterOneStop).toBeLessThan(a.residentTaxAfterFiling)
+  })
+
+  it('上限超過（10万円）: 特例控除が20%上限・ワンストップは確定申告より不利', () => {
+    const a = furusatoActual(result, 100_000, table)
+    expect(a.residentSpecialCapped).toBe(true)
+    expect(a.withinLimit).toBe(false)
+    expect(a.residentSpecialCredit).toBe(47_640) // 238,200×20%
+    // 申告特例控除も20%上限に連動して頭打ち → ワンストップの方が控除が小さく自己負担が大きい
+    expect(a.selfBurdenFiling).toBe(32_555)
+    expect(a.selfBurdenOneStop).toBe(36_463)
+    expect(a.selfBurdenOneStop).toBeGreaterThan(a.selfBurdenFiling)
+  })
+
+  it('寄附額0なら控除なし・住民税は変わらない', () => {
+    const a = furusatoActual(result, 0, table)
+    expect(a.totalCreditFiling).toBe(0)
+    expect(a.totalCreditOneStop).toBe(0)
+    expect(a.withinLimit).toBe(false)
+    expect(a.residentTaxAfterOneStop).toBe(a.residentTaxBefore)
+    expect(a.residentTaxAfterFiling).toBe(a.residentTaxBefore)
+  })
+
+  it('確定申告: 控除総額＝所得税＋住民税基本＋特例、自己負担＝寄附−控除総額', () => {
+    const a = furusatoActual(result, 61_000, table)
+    expect(a.totalCreditFiling).toBe(a.incomeTaxCredit + a.residentBasicCredit + a.residentSpecialCredit)
+    expect(a.selfBurdenFiling).toBe(a.donation - a.totalCreditFiling)
   })
 })

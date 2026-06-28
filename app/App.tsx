@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { calculateTakeHome, furusatoFromResult, getTaxTable } from '@core/index'
+import { calculateTakeHome, furusatoFromResult, furusatoActual, getTaxTable } from '@core/index'
 import { defaultForm, toInput, type FormState } from './state'
 import { eraLabel } from './format'
 import { InputForm } from './components/InputForm'
@@ -13,6 +13,10 @@ export function App() {
 
   const result = useMemo(() => calculateTakeHome(toInput(form)), [form])
   const furusato = useMemo(() => furusatoFromResult(result, getTaxTable(form.taxYear)), [result, form.taxYear])
+  const furusatoActualResult = useMemo(
+    () => furusatoActual(result, form.furusatoDonation, getTaxTable(form.taxYear)),
+    [result, form.furusatoDonation, form.taxYear],
+  )
 
   return (
     <main className="app">
@@ -29,7 +33,7 @@ export function App() {
         <ResultView result={result} />
       </div>
 
-      <FurusatoView furusato={furusato} />
+      <FurusatoView furusato={furusato} actual={furusatoActualResult} form={form} onChange={onChange} />
 
       <footer className="app__footer">
         <p>

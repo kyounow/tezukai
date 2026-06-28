@@ -83,7 +83,16 @@ export interface FormState {
   adjYoungDependent: boolean
   adjSelfDisability: boolean
   adjFamilyDisability: boolean
+
+  // ── ふるさと納税の実績シミュレーション ──
+  /** 今年寄附したふるさと納税の合計額（円）。 */
+  furusatoDonation: number
+  /** 控除方式（ワンストップ特例 / 確定申告）。 */
+  furusatoMethod: FurusatoMethod
 }
+
+/** ふるさと納税の控除方式。 */
+export type FurusatoMethod = 'oneStop' | 'filing'
 
 export const defaultForm: FormState = {
   taxYear: LATEST_TAX_YEAR,
@@ -134,6 +143,8 @@ export const defaultForm: FormState = {
   adjYoungDependent: false,
   adjSelfDisability: false,
   adjFamilyDisability: false,
+  furusatoDonation: 0,
+  furusatoMethod: 'oneStop',
 }
 
 /** フォーム状態をコア計算の入力に変換する。 */

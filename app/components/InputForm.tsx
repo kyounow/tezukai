@@ -14,16 +14,16 @@ function toNumber(value: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
-/** 額面年収スライダー／数値入力の上限（1億円）。両者を一致させる。 */
-const SALARY_MAX = 100_000_000
+/** 額面年収スライダー／数値入力の上限（5,000万円）。両者を一致させる。 */
+const SALARY_MAX = 50_000_000
 /** スライダーの目盛り（ガイド）ラベル。 */
 const SALARY_TICKS: { value: number; label: string }[] = [
   { value: 0, label: '0' },
+  { value: 10_000_000, label: '1000万' },
   { value: 20_000_000, label: '2000万' },
+  { value: 30_000_000, label: '3000万' },
   { value: 40_000_000, label: '4000万' },
-  { value: 60_000_000, label: '6000万' },
-  { value: 80_000_000, label: '8000万' },
-  { value: 100_000_000, label: '1億' },
+  { value: 50_000_000, label: '5000万' },
 ]
 
 export function InputForm({ form, onChange }: Props) {
