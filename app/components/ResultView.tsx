@@ -20,7 +20,10 @@ export function ResultView({ result: r }: Props) {
     { key: 'residentTax', label: '住民税', value: r.residentTax, color: SEGMENT_COLORS.residentTax },
   ].filter((s) => s.value > 0)
 
-  const base = Math.max(1, r.salaryIncome)
+  const isSole = r.mode === 'soleProprietor'
+  const base = Math.max(1, r.grossIncome)
+  const grossLabel = isSole ? '事業収入−必要経費（＋給与以外の所得）' : '額面年収'
+  const socialLabel = isSole ? '社会保険料（国民年金・国民健康保険）' : '社会保険料（健保・厚年・雇用ほか）'
 
   return (
     <section className="card result" aria-label="計算結果">
@@ -60,8 +63,11 @@ export function ResultView({ result: r }: Props) {
       {/* 主要内訳 */}
       <table className="summary">
         <tbody>
-          <Row label="額面年収" value={yen(r.salaryIncome)} strong />
-          <Row label="社会保険料（健保・厚年・雇用ほか）" value={`− ${yen(r.socialInsurance.total)}`} />
+          <Row label={grossLabel} value={yen(r.grossIncome)} strong />
+          {isSole && (
+            <Row label="うち事業所得（青色申告特別控除後）" value={yen(r.businessIncome)} />
+          )}
+          <Row label={socialLabel} value={`− ${yen(r.socialInsurance.total)}`} />
           <Row label="所得税（復興特別所得税込み）" value={`− ${yen(r.incomeTax)}`} />
           <Row label="住民税（所得割＋均等割＋森林環境税）" value={`− ${yen(r.residentTax)}`} />
           <Row label="年間手取り" value={yen(r.takeHome)} strong highlight />
@@ -83,17 +89,23 @@ export function ResultView({ result: r }: Props) {
         <summary>計算の詳細を見る</summary>
         <table className="summary summary--detail">
           <tbody>
-            <Row label="給与所得（給与収入−給与所得控除）" value={yen(r.employmentIncome)} />
+            {isSole ? (
+              <Row label="事業所得（収入−必要経費−青色控除）" value={yen(r.businessIncome)} />
+            ) : (
+              <Row label="給与所得（給与収入−給与所得控除）" value={yen(r.employmentIncome)} />
+            )}
             {r.incomeAdjustment > 0 && <Row label="所得金額調整控除" value={`− ${yen(r.incomeAdjustment)}`} />}
             {r.otherIncomeTotal !== 0 && <Row label="給与以外の所得（損益通算後）" value={yen(r.otherIncomeTotal)} />}
-            {(r.incomeAdjustment > 0 || r.otherIncomeTotal !== 0) && (
+            {(isSole || r.incomeAdjustment > 0 || r.otherIncomeTotal !== 0) && (
               <Row label="合計所得金額" value={yen(r.totalIncome)} />
             )}
             <SubHeader label="社会保険料の内訳（本人負担・年額）" />
-            <Row label="健康保険" value={yen(r.socialInsurance.health)} />
-            {r.socialInsurance.longTermCare > 0 && <Row label="介護保険" value={yen(r.socialInsurance.longTermCare)} />}
-            <Row label="厚生年金" value={yen(r.socialInsurance.pension)} />
-            <Row label="雇用保険" value={yen(r.socialInsurance.employment)} />
+            <Row label={isSole ? '国民健康保険（医療＋支援金）' : '健康保険'} value={yen(r.socialInsurance.health)} />
+            {r.socialInsurance.longTermCare > 0 && (
+              <Row label={isSole ? '国民健康保険（介護分）' : '介護保険'} value={yen(r.socialInsurance.longTermCare)} />
+            )}
+            <Row label={isSole ? '国民年金' : '厚生年金'} value={yen(r.socialInsurance.pension)} />
+            {!isSole && <Row label="雇用保険" value={yen(r.socialInsurance.employment)} />}
             <SubHeader label="所得税" />
             <Row label="所得控除の合計" value={yen(r.incomeTaxDeductions.total)} />
             <Row label="課税所得（1,000円未満切捨て）" value={yen(r.taxableForIncomeTax)} />

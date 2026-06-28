@@ -1,10 +1,20 @@
 import { LATEST_TAX_YEAR } from '@core/index'
-import type { HousingConstruction, HousingPerformance, TakeHomeInput, TaxYear } from '@core/index'
+import type { BlueDeduction, HousingConstruction, HousingPerformance, TakeHomeInput, TaxpayerMode, TaxYear } from '@core/index'
 
 /** 入力フォームの状態（UI 都合の平坦な構造）。 */
 export interface FormState {
   /** 対象年度（税制ルールセットの選択）。 */
   taxYear: TaxYear
+  /** 納税者区分（給与所得者／個人事業主）。 */
+  mode: TaxpayerMode
+  /** 事業収入（個人事業主）。 */
+  busRevenue: number
+  /** 必要経費（個人事業主）。 */
+  busExpenses: number
+  /** 青色申告特別控除の区分。 */
+  blueDeduction: BlueDeduction
+  /** 国民健康保険の加入人数。 */
+  kokuhoMembers: number
   /** 額面年収（円。簡易モード用）。 */
   salaryIncome: number
   /** 賞与分離モード（社保を月給＋賞与で精密計算）。 */
@@ -73,6 +83,11 @@ export interface FormState {
 
 export const defaultForm: FormState = {
   taxYear: LATEST_TAX_YEAR,
+  mode: 'employee',
+  busRevenue: 5_000_000,
+  busExpenses: 1_500_000,
+  blueDeduction: '65',
+  kokuhoMembers: 1,
   salaryIncome: 5_000_000,
   bonusMode: false,
   monthlySalary: 300_000,
@@ -118,9 +133,13 @@ export const defaultForm: FormState = {
 /** フォーム状態をコア計算の入力に変換する。 */
 export function toInput(f: FormState): TakeHomeInput {
   const salaryIncome = f.bonusMode ? f.monthlySalary * 12 + f.annualBonus : f.salaryIncome
+  const sole = f.mode === 'soleProprietor'
   return {
     taxYear: f.taxYear,
+    mode: f.mode,
     salaryIncome,
+    business: sole ? { revenue: f.busRevenue, expenses: f.busExpenses, blueDeduction: f.blueDeduction } : undefined,
+    kokuhoMembers: sole ? f.kokuhoMembers : undefined,
     salaryBreakdown: f.bonusMode
       ? { monthlySalary: f.monthlySalary, annualBonus: f.annualBonus, bonusCount: f.bonusCount }
       : undefined,

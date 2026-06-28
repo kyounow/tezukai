@@ -176,7 +176,8 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
           <YenField label="総合譲渡・長期（1/2前）" value={form.otherLongCapital} onChange={(v) => onChange({ otherLongCapital: v })} />
         </fieldset>
 
-        {/* 所得金額調整控除 */}
+        {/* 所得金額調整控除（給与所得者のみ） */}
+        {form.mode === 'employee' && (
         <fieldset className="extra__group">
           <legend>所得金額調整控除（給与収入850万円超）</legend>
           <p className="extra__note">給与収入が850万円超で、次のいずれかに該当すると給与所得から最大15万円が控除されます。</p>
@@ -193,6 +194,7 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
             特別障害者である同一生計配偶者・扶養親族がいる
           </label>
         </fieldset>
+        )}
       </div>
     </details>
   )

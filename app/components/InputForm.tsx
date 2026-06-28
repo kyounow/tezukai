@@ -1,5 +1,5 @@
 import { AVAILABLE_TAX_YEARS } from '@core/index'
-import type { TaxYear } from '@core/index'
+import type { BlueDeduction, TaxpayerMode, TaxYear } from '@core/index'
 import type { FormState } from '../state'
 import { eraLabel, man } from '../format'
 import { NumberInput } from './NumberInput'
@@ -39,6 +39,76 @@ export function InputForm({ form, onChange }: Props) {
         </select>
       </div>
 
+      {/* 納税者区分 */}
+      <div className="field">
+        <label className="field__label" htmlFor="mode">
+          区分
+        </label>
+        <select
+          id="mode"
+          className="field__select"
+          value={form.mode}
+          onChange={(e) => onChange({ mode: e.target.value as TaxpayerMode })}
+        >
+          <option value="employee">給与所得者（会社員・パート）</option>
+          <option value="soleProprietor">個人事業主（事業所得）</option>
+        </select>
+      </div>
+
+      {form.mode === 'soleProprietor' && (
+        <>
+          <div className="field">
+            <label className="field__label" htmlFor="bus-revenue">
+              事業収入（売上）
+            </label>
+            <div className="field__inline">
+              <NumberInput id="bus-revenue" className="field__number" ariaLabel="事業収入" value={form.busRevenue} max={1_000_000_000} onChange={(v) => onChange({ busRevenue: v })} />
+              <span className="field__unit">円</span>
+            </div>
+          </div>
+          <div className="field">
+            <label className="field__label" htmlFor="bus-expenses">
+              必要経費
+            </label>
+            <div className="field__inline">
+              <NumberInput id="bus-expenses" className="field__number" ariaLabel="必要経費" value={form.busExpenses} max={1_000_000_000} onChange={(v) => onChange({ busExpenses: v })} />
+              <span className="field__unit">円</span>
+            </div>
+          </div>
+          <div className="field">
+            <label className="field__label" htmlFor="blue">
+              申告方法（青色申告特別控除）
+            </label>
+            <select id="blue" className="field__select" value={form.blueDeduction} onChange={(e) => onChange({ blueDeduction: e.target.value as BlueDeduction })}>
+              <option value="65">青色65万円（複式簿記＋e-Tax/電子帳簿保存）</option>
+              <option value="55">青色55万円（複式簿記）</option>
+              <option value="10">青色10万円（簡易簿記等）</option>
+              <option value="none">白色申告（控除なし）</option>
+            </select>
+          </div>
+          <div className="field">
+            <label className="field__label" htmlFor="kokuho-members">
+              国民健康保険の加入人数
+              <span className="field__hint">均等割の人数（世帯）</span>
+            </label>
+            <div className="field__inline">
+              <input
+                id="kokuho-members"
+                className="field__number field__number--narrow"
+                type="number"
+                min={1}
+                max={15}
+                value={form.kokuhoMembers}
+                onChange={(e) => onChange({ kokuhoMembers: Math.max(1, Math.min(15, toNumber(e.target.value))) })}
+              />
+              <span className="field__unit">人</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {form.mode === 'employee' && (
+        <>
       {/* 賞与分離モードの切替 */}
       <div className="field">
         <label className="field__check field__check--small">
@@ -108,6 +178,9 @@ export function InputForm({ form, onChange }: Props) {
             <span className="field__unit">円</span>
           </div>
         </div>
+      )}
+
+        </>
       )}
 
       {/* 年齢 */}
