@@ -9,6 +9,8 @@ import type {
   HousingLoanConfig,
   LifeInsuranceConfig,
   MedicalExpenseConfig,
+  NationalHealthInsuranceConfig,
+  NationalPensionConfig,
   TaxTable,
 } from './types'
 
@@ -465,6 +467,21 @@ export const HOUSING_LOAN_2025: HousingLoanConfig = {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 個人事業主モード：国民年金（令和7年度・定額）／国民健康保険（東京特別区・令和7年度・概算）
+// 出典: 日本年金機構（月額17,510円）、新宿区/文京区/東京都保健医療局（特別区統一保険料率）。
+// 国保の賦課基準額＝総所得金額等−43万円（旧ただし書き所得）。
+// ─────────────────────────────────────────────────────────────
+export const NATIONAL_PENSION_2025: NationalPensionConfig = { annual: 210_120 } // 17,510円×12
+
+export const NATIONAL_HEALTH_INSURANCE_2025: NationalHealthInsuranceConfig = {
+  basicDeduction: 430_000,
+  medical: { incomeRate: 0.0771, perCapita: 47_300, cap: 660_000 },
+  support: { incomeRate: 0.0269, perCapita: 16_800, cap: 260_000 },
+  longTermCare: { incomeRate: 0.0225, perCapita: 16_600, cap: 170_000, minAge: 40, maxAge: 64 },
+  areaLabel: '東京都特別区',
+}
+
+// ─────────────────────────────────────────────────────────────
 // 集約: 令和7年（2025）の TaxTable。レジストリ（index.ts）から参照する。
 // 上の個別定数は出典コメント保持のためそのまま残し、ここで束ねる。
 // ─────────────────────────────────────────────────────────────
@@ -493,4 +510,6 @@ export const TAX_TABLE_2025: TaxTable = {
   medicalExpense: MEDICAL_EXPENSE_2025,
   lifeInsurance: LIFE_INSURANCE_2025,
   housingLoan: HOUSING_LOAN_2025,
+  nationalPension: NATIONAL_PENSION_2025,
+  nationalHealthInsurance: NATIONAL_HEALTH_INSURANCE_2025,
 }

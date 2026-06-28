@@ -8,7 +8,9 @@ export type { FurusatoResult } from './furusato/furusato'
 export { employmentIncome, employmentIncomeDeduction } from './income/employmentIncome'
 export { otherIncomeTotal } from './income/otherIncome'
 export { incomeAdjustmentDeduction } from './income/incomeAdjustment'
+export { businessIncome, businessProfit } from './income/businessIncome'
 export { socialInsurance } from './insurance/socialInsurance'
+export { nationalInsurance } from './insurance/nationalInsurance'
 export { baseIncomeTax, incomeTaxWithSurtax } from './tax/incomeTax'
 export { residentTax, adjustmentCredit } from './tax/residentTax'
 export {
@@ -46,6 +48,9 @@ export type {
   HousingPerformance,
   OtherIncomeInput,
   IncomeAdjustmentInput,
+  TaxpayerMode,
+  BlueDeduction,
+  BusinessInput,
 } from './types'
 
 // 年度別ルールセット（法改正対応）のレジストリを UI 向けに再エクスポート。

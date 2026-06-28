@@ -11,9 +11,16 @@
  *     出典: 財務省 令和8年度税制改正パンフレット、国交省。
  * 詳細は data/taxTables/sources-2026.md を参照。
  */
-import type { HousingLoanConfig, LifeInsuranceConfig, SocialInsuranceConfig, TaxTable } from './types'
+import type {
+  HousingLoanConfig,
+  LifeInsuranceConfig,
+  NationalPensionConfig,
+  SocialInsuranceConfig,
+  TaxTable,
+} from './types'
 import {
   BASIC_DEDUCTION_INCOME_TAX_2025,
+  NATIONAL_HEALTH_INSURANCE_2025,
   BASIC_DEDUCTION_RESIDENT_TAX_2025,
   DEPENDENT_DEDUCTION_2025,
   EMPLOYMENT_INCOME_DEDUCTION_2025,
@@ -85,6 +92,10 @@ const HOUSING_LOAN_2026: HousingLoanConfig = {
   },
 }
 
+// 国民年金（令和8年度・定額）。出典: 日本年金機構（月額17,920円）。
+// 国民健康保険は令和8年度の特別区率が未取得のため令和7年度を再利用（近似・TODO）。
+const NATIONAL_PENSION_2026: NationalPensionConfig = { annual: 215_040 } // 17,920円×12
+
 export const TAX_TABLE_2026: TaxTable = {
   year: TAX_YEAR_2026,
   employmentIncomeDeduction: EMPLOYMENT_INCOME_DEDUCTION_2025,
@@ -107,4 +118,6 @@ export const TAX_TABLE_2026: TaxTable = {
   medicalExpense: MEDICAL_EXPENSE_2025,
   lifeInsurance: LIFE_INSURANCE_2026,
   housingLoan: HOUSING_LOAN_2026,
+  nationalPension: NATIONAL_PENSION_2026,
+  nationalHealthInsurance: NATIONAL_HEALTH_INSURANCE_2025,
 }

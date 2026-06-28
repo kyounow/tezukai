@@ -134,10 +134,28 @@ export interface SalaryBreakdown {
   bonusCount?: number
 }
 
+/** 納税者の区分（給与所得者／個人事業主）。 */
+export type TaxpayerMode = 'employee' | 'soleProprietor'
+
+/** 青色申告特別控除の区分（白色＝none）。 */
+export type BlueDeduction = 'none' | '10' | '55' | '65'
+
+/** 個人事業主の事業所得の入力。 */
+export interface BusinessInput {
+  /** 事業収入（総収入金額・円）。 */
+  revenue: number
+  /** 必要経費（円）。 */
+  expenses: number
+  /** 青色申告特別控除の区分。 */
+  blueDeduction?: BlueDeduction
+}
+
 /** 手取り計算への入力。 */
 export interface TakeHomeInput {
   /** 対象年度（省略時 2025）。 */
   taxYear?: TaxYear
+  /** 納税者区分（省略時 employee）。 */
+  mode?: TaxpayerMode
   /** 給与収入（額面年収・円）。賞与分離時は monthlySalary×12＋annualBonus に一致させる。 */
   salaryIncome: number
   /** 賞与を分離して社保を精密計算する場合の内訳（省略時は年収÷12の簡易計算）。 */
@@ -160,6 +178,10 @@ export interface TakeHomeInput {
   otherIncome?: OtherIncomeInput
   /** 所得金額調整控除（給与収入850万超）の該当条件。 */
   incomeAdjustment?: IncomeAdjustmentInput
+  /** 個人事業主モードの事業所得。 */
+  business?: BusinessInput
+  /** 国民健康保険の加入人数（世帯。均等割に使用。省略時1）。 */
+  kokuhoMembers?: number
 }
 
 /** 社会保険料（本人負担・年額）の内訳。 */
@@ -227,8 +249,14 @@ export interface ResidentTaxBreakdown {
 /** 手取り計算の結果（内訳付き）。 */
 export interface TakeHomeResult {
   taxYear: TaxYear
-  /** 給与収入（額面年収）。 */
+  /** 納税者区分。 */
+  mode: TaxpayerMode
+  /** 給与収入（額面年収）。個人事業主モードでは0。 */
   salaryIncome: number
+  /** 手取り計算の基礎となる総収入（給与＝額面、事業＝収入−必要経費、＋給与以外の所得）。 */
+  grossIncome: number
+  /** 事業所得（収入−必要経費−青色申告特別控除）。個人事業主モードのみ。 */
+  businessIncome: number
   /** 給与所得（給与収入−給与所得控除。所得金額調整控除前）。 */
   employmentIncome: number
   /** 所得金額調整控除額（給与所得から差し引く）。 */

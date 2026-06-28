@@ -3,7 +3,9 @@ import type { TaxTable } from '@data/taxTables/types'
 import { employmentIncome } from './income/employmentIncome'
 import { incomeAdjustmentDeduction } from './income/incomeAdjustment'
 import { otherIncomeTotal } from './income/otherIncome'
+import { businessIncome, businessProfit } from './income/businessIncome'
 import { socialInsurance } from './insurance/socialInsurance'
+import { nationalInsurance } from './insurance/nationalInsurance'
 import {
   basicDeduction,
   dependentDeduction,
@@ -114,13 +116,25 @@ function nonTaxableDependentCount(input: TakeHomeInput, table: TaxTable): number
  */
 export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const table = getTaxTable(input.taxYear ?? DEFAULT_TAX_YEAR)
-  const salaryIncome = Math.max(0, Math.floor(input.salaryIncome))
-  const empIncome = employmentIncome(salaryIncome, table)
-  const incomeAdjust = input.incomeAdjustment ? incomeAdjustmentDeduction(salaryIncome, input.incomeAdjustment) : 0
+  const mode = input.mode ?? 'employee'
+  const salaryIncome = mode === 'employee' ? Math.max(0, Math.floor(input.salaryIncome)) : 0
+
+  // 本業の所得
+  const empIncome = mode === 'employee' ? employmentIncome(salaryIncome, table) : 0
+  const incomeAdjust =
+    mode === 'employee' && input.incomeAdjustment ? incomeAdjustmentDeduction(salaryIncome, input.incomeAdjustment) : 0
+  const busProfit = mode === 'soleProprietor' && input.business ? businessProfit(input.business) : 0
+  const busIncome = mode === 'soleProprietor' && input.business ? businessIncome(input.business) : 0
   const otherTotal = input.otherIncome ? otherIncomeTotal(input.otherIncome) : 0
-  // 合計所得 = 給与所得 − 所得金額調整控除 ＋ 給与以外の所得（損益通算後）
-  const totalIncome = Math.max(0, empIncome - incomeAdjust + otherTotal)
-  const si = socialInsurance(salaryIncome, input.age, table, input.salaryBreakdown)
+
+  // 合計所得 = 給与所得−調整控除 ＋ 事業所得 ＋ 給与以外の所得（損益通算後）
+  const totalIncome = Math.max(0, empIncome - incomeAdjust + busIncome + otherTotal)
+
+  // 社会保険料（給与＝健保/厚年/雇用、事業＝国民年金＋国保）
+  const si =
+    mode === 'employee'
+      ? socialInsurance(salaryIncome, input.age, table, input.salaryBreakdown)
+      : nationalInsurance(totalIncome, input.age, input.kokuhoMembers, table)
 
   const incomeTaxDeductions = buildDeductions('incomeTax', totalIncome, si.total, input, table)
   const residentTaxDeductions = buildDeductions('residentTax', totalIncome, si.total, input, table)
@@ -148,13 +162,18 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const residentTaxTotal = Math.max(0, resident.total - housingLoanCredit.appliedToResidentTax)
 
   const totalBurden = incomeTax + residentTaxTotal + si.total
-  const takeHome = salaryIncome - totalBurden
+  // 手取りの基礎: 給与＝額面、事業＝収入−必要経費（青色控除前の現金利益）、＋給与以外の所得
+  const grossIncome = (mode === 'employee' ? salaryIncome : busProfit) + otherTotal
+  const takeHome = grossIncome - totalBurden
 
   const medicalDetail = input.medicalExpense ? medicalExpenseDetail(input.medicalExpense, totalIncome, table) : undefined
 
   return {
     taxYear: table.year,
+    mode,
     salaryIncome,
+    grossIncome,
+    businessIncome: busIncome,
     employmentIncome: empIncome,
     incomeAdjustment: incomeAdjust,
     otherIncomeTotal: otherTotal,

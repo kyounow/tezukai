@@ -133,6 +133,35 @@ export interface HousingLoanConfig {
   }
 }
 
+// ── Phase 5: 個人事業主モード（国民年金・国民健康保険） ──
+
+/** 国民年金保険料（第1号被保険者・定額）。 */
+export interface NationalPensionConfig {
+  /** 年額（円）。 */
+  readonly annual: number
+}
+
+/** 国民健康保険の1区分（所得割率・均等割・賦課限度額）。 */
+export interface KokuhoCategory {
+  readonly incomeRate: number
+  readonly perCapita: number
+  readonly cap: number
+}
+
+/** 国民健康保険（代表自治体・概算）。 */
+export interface NationalHealthInsuranceConfig {
+  /** 賦課基準額＝総所得金額等−この額（旧ただし書き所得の基礎控除）。 */
+  readonly basicDeduction: number
+  /** 医療分（基礎賦課額）。 */
+  readonly medical: KokuhoCategory
+  /** 後期高齢者支援金分。 */
+  readonly support: KokuhoCategory
+  /** 介護分（40〜64歳のみ）。 */
+  readonly longTermCare: KokuhoCategory & { readonly minAge: number; readonly maxAge: number }
+  /** 代表自治体の表示名。 */
+  readonly areaLabel: string
+}
+
 /** 1年度分の税・社保ルールの集約。 */
 export interface TaxTable {
   readonly year: TaxYear
@@ -170,6 +199,9 @@ export interface TaxTable {
   readonly medicalExpense?: MedicalExpenseConfig
   readonly lifeInsurance?: LifeInsuranceConfig
   readonly housingLoan?: HousingLoanConfig
+  /** 個人事業主モード（Phase 5）。 */
+  readonly nationalPension?: NationalPensionConfig
+  readonly nationalHealthInsurance?: NationalHealthInsuranceConfig
   /** データで表せない式変更のときのみ使用（原則 undefined）。 */
   readonly rulesetVersion?: number
 }
