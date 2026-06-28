@@ -22,8 +22,19 @@ export function housingLoanLimit(input: HousingLoanInput, cfg: HousingLoanConfig
 }
 
 /**
+ * 控除期間内か（対象年が 入居年〜入居年＋控除期間−1 の範囲か）を判定する。
+ * 新築・買取再販は13年、既存住宅（中古）は10年。期間を過ぎた年・入居前は対象外。
+ * 出典: 国税庁 No.1211-1 / No.1211-3。
+ */
+export function isWithinHousingLoanPeriod(input: HousingLoanInput, cfg: HousingLoanConfig, taxYear: number): boolean {
+  const period = input.construction === 'used' ? cfg.period.used : cfg.period.new
+  const elapsed = taxYear - input.moveInYear // 入居年が1年目（elapsed 0）
+  return elapsed >= 0 && elapsed < period
+}
+
+/**
  * 住宅ローン控除の控除可能額（年末残高×0.7%、借入限度内）。
- * 合計所得金額が上限（2,000万円）を超える年は適用なし。
+ * 合計所得金額が上限（2,000万円）を超える年・控除期間を過ぎた年は適用なし。
  * 所得税/住民税への配分は呼び出し側（takeHome）で行う。
  */
 export function housingLoanAvailableCredit(
@@ -34,6 +45,7 @@ export function housingLoanAvailableCredit(
   const cfg = table.housingLoan
   if (!cfg) return 0
   if (totalIncome > cfg.incomeLimit) return 0
+  if (!isWithinHousingLoanPeriod(input, cfg, table.year)) return 0
   const limit = housingLoanLimit(input, cfg)
   if (limit <= 0) return 0
   const base = Math.min(Math.max(0, input.yearEndBalance), limit)

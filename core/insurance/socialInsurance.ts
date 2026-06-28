@@ -51,6 +51,10 @@ export function socialInsurance(
 
   const si = table.socialInsurance
   const isCareInsured = age >= si.longTermCare.minAge && age <= si.longTermCare.maxAge
+  // 厚生年金は70歳到達で資格喪失、健康保険は75歳で後期高齢者医療へ移行（給与天引きなし）。
+  // 到達年は月割りせず年額（月額×12）で概算（到達月の按分・誕生日前日基準・1日生まれ特例は未対応）。
+  const isPensionInsured = age < (si.pension.maxAge ?? Infinity)
+  const isHealthInsured = age < (si.latterStageElderlyAge ?? Infinity)
 
   // 被保険者（本人）負担の料率。協会けんぽは労使合計÷2、組合健保は手入力の本人負担率をそのまま使う。
   // 子ども・子育て支援金（令和8年度〜）は健保に上乗せ（協会けんぽ＝childSupportRate、組合＝手入力）。
@@ -66,9 +70,9 @@ export function socialInsurance(
   const pensionStandard = standardRemuneration(monthly, table.pensionGrades)
 
   // 月額（標準報酬月額ベース）の本人負担×12。
-  let health = roundPremium(healthStandard * healthEmployeeRate) * 12
+  let health = isHealthInsured ? roundPremium(healthStandard * healthEmployeeRate) * 12 : 0
   let longTermCare = isCareInsured ? roundPremium(healthStandard * careEmployeeRate) * 12 : 0
-  let pension = roundPremium(pensionStandard * pensionEmployeeRate) * 12
+  let pension = isPensionInsured ? roundPremium(pensionStandard * pensionEmployeeRate) * 12 : 0
 
   // 賞与分離モード: 標準賞与額（1000円未満切捨て）に上限を適用して別計算。
   if (breakdown) {
@@ -76,9 +80,9 @@ export function socialInsurance(
     const bonusCount = breakdown.bonusCount ?? 2
     const healthBonusBase = Math.min(stdBonus, HEALTH_BONUS_ANNUAL_CAP)
     const pensionBonusBase = Math.min(stdBonus, PENSION_BONUS_MONTHLY_CAP * Math.max(1, bonusCount))
-    health += roundPremium(healthBonusBase * healthEmployeeRate)
+    health += isHealthInsured ? roundPremium(healthBonusBase * healthEmployeeRate) : 0
     longTermCare += isCareInsured ? roundPremium(healthBonusBase * careEmployeeRate) : 0
-    pension += roundPremium(pensionBonusBase * pensionEmployeeRate)
+    pension += isPensionInsured ? roundPremium(pensionBonusBase * pensionEmployeeRate) : 0
   }
 
   const employment = Math.floor(salaryIncome * si.employment.employeeRate)

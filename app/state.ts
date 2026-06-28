@@ -97,6 +97,12 @@ export interface FormState {
   furusatoDonation: number
   /** 控除方式（ワンストップ特例 / 確定申告）。 */
   furusatoMethod: FurusatoMethod
+
+  // ── 住民税の自治体差 ──
+  /** 非課税限度額の級地区分（1=1級地〔東京23区・政令市等〕/2/3）。 */
+  residentGradeLevel: 1 | 2 | 3
+  /** 均等割額の上書き（市区町村＋都道府県・円。森林環境税を除く）。null＝未入力＝年度テーブルの標準額。 */
+  residentPerCapita: number | null
 }
 
 /** ふるさと納税の控除方式。 */
@@ -161,6 +167,8 @@ export const defaultForm: FormState = {
   adjFamilyDisability: false,
   furusatoDonation: 0,
   furusatoMethod: 'oneStop',
+  residentGradeLevel: 1,
+  residentPerCapita: null,
 }
 
 /** フォーム状態をコア計算の入力に変換する。 */
@@ -223,6 +231,9 @@ export function toInput(f: FormState): TakeHomeInput {
           generalLongTermCapital: f.otherLongCapital,
         }
       : undefined,
+    residentGradeLevel: f.residentGradeLevel,
+    // 未入力(null)は年度テーブルの標準均等割を採用（residentTax 側で ?? rt.perCapita.total）。
+    residentPerCapitaOverride: f.residentPerCapita ?? undefined,
     incomeAdjustment:
       f.adjYoungDependent || f.adjSelfDisability || f.adjFamilyDisability
         ? {

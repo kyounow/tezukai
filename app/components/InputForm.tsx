@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AVAILABLE_TAX_YEARS } from '@core/index'
+import { AVAILABLE_TAX_YEARS, getTaxTable } from '@core/index'
 import type { BlueDeduction, TaxpayerMode, TaxYear } from '@core/index'
 import type { FormState } from '../state'
 import { eraLabel, man } from '../format'
@@ -284,6 +284,15 @@ export function InputForm({ form, onChange }: Props) {
           <span className="field__unit">歳</span>
         </div>
       </div>
+      {form.mode === 'employee' && form.age >= 65 && (
+        <p className="field__note">
+          {form.age >= 75
+            ? '※ 75歳以上は健康保険から後期高齢者医療制度へ移行します（健保・厚年の給与天引きなし。後期高齢者医療保険料は本ツール未対応・別途個人負担）。'
+            : form.age >= 70
+              ? '※ 70歳以上は厚生年金保険の資格を喪失するため厚生年金保険料はかかりません（健保・雇用は継続）。'
+              : '※ 65歳以上は介護保険が第1号となり、給与天引きでなく年金天引き等で別途納付します（本ツールの社会保険料には含めません）。'}
+        </p>
+      )}
 
       {/* 配偶者 */}
       <div className="field">
@@ -358,6 +367,46 @@ export function InputForm({ form, onChange }: Props) {
             onChange={(v) => onChange({ depElderlyOther: v })}
           />
         </div>
+      </fieldset>
+
+      {/* 住民税の自治体差（任意） */}
+      <fieldset className="field">
+        <legend className="field__label">住民税の自治体差（任意）</legend>
+        <label className="selectfield">
+          <span>級地区分（非課税限度額）</span>
+          <select
+            className="field__select"
+            value={form.residentGradeLevel}
+            onChange={(e) => onChange({ residentGradeLevel: Number(e.target.value) as 1 | 2 | 3 })}
+          >
+            <option value={1}>1級地（東京23区・政令市など）</option>
+            <option value={2}>2級地（中規模都市など）</option>
+            <option value={3}>3級地（町村など）</option>
+          </select>
+        </label>
+        <label className="selectfield">
+          <span>均等割（市区町村＋都道府県・森林環境税を除く）</span>
+          <span className="field__inline">
+            <input
+              className="field__number field__number--narrow"
+              type="number"
+              min={0}
+              max={20000}
+              step={100}
+              placeholder={String(getTaxTable(form.taxYear).residentTax.perCapita.total)}
+              value={form.residentPerCapita ?? ''}
+              onChange={(e) => {
+                const v = e.target.value
+                onChange({ residentPerCapita: v === '' ? null : Math.max(0, Math.min(20000, toNumber(v))) })
+              }}
+            />
+            <span className="field__unit">円</span>
+          </span>
+        </label>
+        <p className="field__note">
+          未入力なら標準（均等割4,000円＋森林環境税1,000円＝5,000円）。超過課税の自治体（例: 横浜みどり税で市民税＋900円）は
+          均等割（森林環境税を除く）を上書きしてください。級地区分は低所得時の非課税限度額の判定に影響します。
+        </p>
       </fieldset>
     </section>
   )

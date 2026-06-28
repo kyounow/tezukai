@@ -33,6 +33,10 @@ export interface ResidentTaxParams {
   totalIncome: number
   /** 同一生計配偶者＋扶養親族の人数（本人を除く）。非課税限度額の判定に使用。 */
   dependentCount: number
+  /** 非課税限度額の級地率（1級地1.0／2級地0.9／3級地0.8。省略時1.0）。基本額・加算額に乗じる（+10万は対象外）。 */
+  gradeFactor?: number
+  /** 均等割額の上書き（市区町村＋都道府県・森林環境税を除く・円）。超過課税の自治体向け。省略時は標準額。 */
+  perCapitaOverride?: number
 }
 
 /**
@@ -47,8 +51,11 @@ export function residentTax(p: ResidentTaxParams, table: TaxTable = getTaxTable(
   const count = 1 + Math.max(0, p.dependentCount)
   const hasDependents = p.dependentCount > 0
 
-  const perCapitaLimit = nt.perPerson * count + nt.base + (hasDependents ? nt.perCapitaAddition : 0)
-  const incomePortionLimit = nt.perPerson * count + nt.base + (hasDependents ? nt.incomePortionAddition : 0)
+  // 非課税限度額は級地率を基本額(35万)・加算額(21万/32万)に乗じる。+10万(base)は国一律で級地率を掛けない。
+  const factor = p.gradeFactor ?? 1
+  const perPerson = Math.round(nt.perPerson * factor)
+  const perCapitaLimit = perPerson * count + nt.base + (hasDependents ? Math.round(nt.perCapitaAddition * factor) : 0)
+  const incomePortionLimit = perPerson * count + nt.base + (hasDependents ? Math.round(nt.incomePortionAddition * factor) : 0)
   const perCapitaExempt = p.totalIncome <= perCapitaLimit
   const incomePortionExempt = p.totalIncome <= incomePortionLimit
 
@@ -61,7 +68,9 @@ export function residentTax(p: ResidentTaxParams, table: TaxTable = getTaxTable(
     incomePortion = cityPortion + prefPortion
   }
 
-  const perCapita = perCapitaExempt ? 0 : rt.perCapita.total
+  // 均等割は超過課税の自治体向けに上書き可（森林環境税は国税で固定）。
+  const perCapitaAmount = p.perCapitaOverride ?? rt.perCapita.total
+  const perCapita = perCapitaExempt ? 0 : perCapitaAmount
   const forestTax = perCapitaExempt ? 0 : rt.forestTax
 
   return {

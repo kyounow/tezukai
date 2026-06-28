@@ -27,7 +27,7 @@ export {
   earthquakeInsuranceDeduction,
   smallEnterpriseDeduction,
 } from './deductions/extraDeductions'
-export { housingLoanLimit, housingLoanAvailableCredit } from './deductions/housingLoan'
+export { housingLoanLimit, housingLoanAvailableCredit, isWithinHousingLoanPeriod } from './deductions/housingLoan'
 
 export type {
   TaxYear,

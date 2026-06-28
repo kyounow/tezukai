@@ -161,12 +161,16 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const incomeTax = baseTaxAfterCredit <= 0 ? 0 : floorTo100(baseTaxAfterCredit * (1 + table.reconstructionSurtaxRate))
 
   // 住民税。resident.incomePortion は調整控除後・住宅ローン控除前（ふるさと納税の基礎）。
+  // 住民税の級地率（1級地1.0／2級地0.9／3級地0.8）と均等割の上書き（超過課税の自治体）。
+  const gradeFactor = input.residentGradeLevel === 2 ? 0.9 : input.residentGradeLevel === 3 ? 0.8 : 1
   const resident = residentTax(
     {
       taxableForResident,
       humanDeductionDiffSum: humanDeductionDiffSum(totalIncome, input, table),
       totalIncome,
       dependentCount: nonTaxableDependentCount(input, table),
+      gradeFactor,
+      perCapitaOverride: input.residentPerCapitaOverride,
     },
     table,
   )

@@ -206,6 +206,10 @@ export interface TakeHomeInput {
   business?: BusinessInput
   /** 国民健康保険の加入人数（世帯。均等割に使用。省略時1）。 */
   kokuhoMembers?: number
+  /** 住民税 非課税限度額の級地区分（1=1級地/2/3。省略時1級地）。生活保護の級地に連動。 */
+  residentGradeLevel?: 1 | 2 | 3
+  /** 住民税の均等割額（市区町村＋都道府県・円。森林環境税を除く。省略時は標準4,000円）。超過課税の自治体向け。 */
+  residentPerCapitaOverride?: number
 }
 
 /** 社会保険料（本人負担・年額）の内訳。 */

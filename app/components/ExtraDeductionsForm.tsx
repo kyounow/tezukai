@@ -117,7 +117,7 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
 
         {/* 住宅ローン控除 */}
         <fieldset className="extra__group">
-          <legend>住宅ローン控除（現行制度・令和4〜7入居）</legend>
+          <legend>住宅ローン控除（現行制度・令和4〜8入居）</legend>
           <label className="field__check field__check--small">
             <input type="checkbox" checked={form.housingEnabled} onChange={(e) => onChange({ housingEnabled: e.target.checked })} />
             住宅ローン控除を適用する
@@ -172,6 +172,7 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
               <YenField label="年末の住宅ローン残高" value={form.housingBalance} onChange={(v) => onChange({ housingBalance: v })} />
               <p className="extra__note">
                 ※ 借入限度額・控除期間は居住年と住宅区分で決まります（控除率0.7%）。合計所得2,000万円以下・床面積50㎡以上が要件。
+                <strong>控除期間（新築13年・中古10年）を過ぎた年は控除されません</strong>（入居年から計算）。
                 令和6・7入居の新築「その他（省エネ基準なし）」は原則対象外です。
               </p>
             </div>

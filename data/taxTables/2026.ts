@@ -49,8 +49,9 @@ export const TAX_YEAR_2026 = 2026 as const
 const SOCIAL_INSURANCE_2026: SocialInsuranceConfig = {
   health: { rate: 0.0985, childSupportRate: 0.0023 },
   longTermCare: { rate: 0.0162, minAge: 40, maxAge: 64 },
-  pension: { rate: 0.183 },
+  pension: { rate: 0.183, maxAge: 70 }, // 厚年は70歳到達で資格喪失
   employment: { employeeRate: 0.005 },
+  latterStageElderlyAge: 75, // 75歳で後期高齢者医療へ移行（健保の給与天引きなし）
 }
 
 // 生命保険料控除（令和8年分・子育て世帯の一般生命保険(新)の所得税上限6万円）
@@ -73,7 +74,8 @@ const HOUSING_LOAN_2026: HousingLoanConfig = {
   creditRate: 0.007,
   incomeLimit: 20_000_000,
   residentCarryover: { rate: 0.05, cap: 97_500 },
-  period: { new: 13, used: 13 },
+  period: { new: 13, used: 10 }, // 中古（既存住宅）は一律10年（国税庁 No.1211-3）
+
   limits: {
     new: {
       ...HOUSING_LOAN_2025.limits.new,

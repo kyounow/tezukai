@@ -58,8 +58,11 @@ export interface SocialInsuranceConfig {
   /** 健康保険。childSupportRate は子ども・子育て支援金率（令和8年度新設・健保に上乗せ）。 */
   readonly health: { readonly rate: number; readonly childSupportRate?: number }
   readonly longTermCare: { readonly rate: number; readonly minAge: number; readonly maxAge: number }
-  readonly pension: { readonly rate: number }
+  /** 厚生年金。maxAge＝この年齢に達すると資格喪失（70歳以上は保険料なし）。 */
+  readonly pension: { readonly rate: number; readonly maxAge?: number }
   readonly employment: { readonly employeeRate: number }
+  /** 後期高齢者医療制度へ移行する年齢（この年齢以上は健康保険の給与天引きなし）。 */
+  readonly latterStageElderlyAge?: number
 }
 
 // ── Phase 4: 拡張控除の設定型 ──────────────────────────────
