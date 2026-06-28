@@ -6,6 +6,7 @@
  * すべて円単位。各数値の一次情報は行コメントの URL を参照。
  */
 import type {
+  EarthquakeInsuranceConfig,
   HousingLoanConfig,
   LifeInsuranceConfig,
   MedicalExpenseConfig,
@@ -440,6 +441,32 @@ export const LIFE_INSURANCE_2025: LifeInsuranceConfig = {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 地震保険料控除（出典: 国税庁 No.1145、自治体公式（住民税））
+// 所得税: 地震保険料は全額(上限5万)。旧長期損害保険料は段階。合算上限5万。
+// 住民税: 地震保険料は1/2(上限2.5万)。旧長期は段階。合算上限2.5万。
+// ─────────────────────────────────────────────────────────────
+export const EARTHQUAKE_INSURANCE_2025: EarthquakeInsuranceConfig = {
+  incomeTax: {
+    earthquake: { rate: 1, cap: 50_000 },
+    oldLongTerm: [
+      { upTo: 10_000, rate: 1, plus: 0 },
+      { upTo: 20_000, rate: 0.5, plus: 5_000 },
+      { upTo: null, rate: 0, plus: 15_000 },
+    ],
+    totalCap: 50_000,
+  },
+  residentTax: {
+    earthquake: { rate: 0.5, cap: 25_000 },
+    oldLongTerm: [
+      { upTo: 5_000, rate: 1, plus: 0 },
+      { upTo: 15_000, rate: 0.5, plus: 2_500 },
+      { upTo: null, rate: 0, plus: 10_000 },
+    ],
+    totalCap: 25_000,
+  },
+}
+
+// ─────────────────────────────────────────────────────────────
 // 住宅借入金等特別控除（住宅ローン控除）令和4〜7入居の現行制度（控除率0.7%）
 // 出典: 国税庁 No.1211-1（新築）/No.1211-3（中古）、国交省 住宅ローン減税。
 // 控除額 = min(年末残高, 借入限度額) × 0.7%。所得税で引ききれない分は住民税所得割から
@@ -509,6 +536,7 @@ export const TAX_TABLE_2025: TaxTable = {
   pensionGrades: PENSION_GRADES_2025,
   medicalExpense: MEDICAL_EXPENSE_2025,
   lifeInsurance: LIFE_INSURANCE_2025,
+  earthquakeInsurance: EARTHQUAKE_INSURANCE_2025,
   housingLoan: HOUSING_LOAN_2025,
   nationalPension: NATIONAL_PENSION_2025,
   nationalHealthInsurance: NATIONAL_HEALTH_INSURANCE_2025,

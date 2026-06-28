@@ -24,6 +24,7 @@ export {
   medicalExpenseDeduction,
   medicalExpenseDetail,
   lifeInsuranceDeduction,
+  earthquakeInsuranceDeduction,
   smallEnterpriseDeduction,
 } from './deductions/extraDeductions'
 export { housingLoanLimit, housingLoanAvailableCredit } from './deductions/housingLoan'
@@ -42,6 +43,7 @@ export type {
   MedicalMethod,
   LifeInsuranceInput,
   LifeInsuranceCategoryInput,
+  EarthquakeInsuranceInput,
   HousingLoanInput,
   HousingLoanCreditBreakdown,
   HousingConstruction,

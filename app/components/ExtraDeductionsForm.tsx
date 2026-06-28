@@ -57,7 +57,7 @@ const PERFORMANCES: { value: HousingPerformance; label: string }[] = [
 export function ExtraDeductionsForm({ form, onChange }: Props) {
   return (
     <details className="card extra">
-      <summary className="extra__summary">拡張控除（任意）— 医療費・生命保険・iDeCo・住宅ローン控除</summary>
+      <summary className="extra__summary">拡張控除（任意）— 医療費・生命保険・地震保険・iDeCo・住宅ローン控除</summary>
       <div className="extra__body">
         {/* 医療費控除 */}
         <fieldset className="extra__group">
@@ -89,6 +89,22 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
             <input type="checkbox" checked={form.lifeChildcare} onChange={(e) => onChange({ lifeChildcare: e.target.checked })} />
             23歳未満の扶養親族がいる（令和8: 一般生命保険・新の所得税控除が6万円に拡充）
           </label>
+        </fieldset>
+
+        {/* 地震保険料控除 */}
+        <fieldset className="extra__group">
+          <legend>地震保険料控除（年間支払保険料）</legend>
+          <p className="extra__note">
+            ※ 控除額は<strong>所得税＝地震保険料の全額（上限5万円）</strong>、
+            <strong>住民税＝1/2（上限2.5万円）</strong>。平成18年末までに契約した一定の長期損害保険（保険期間10年以上・満期返戻金あり）は
+            「旧長期損害保険料」として経過措置の対象です（両方ある場合の合計上限は所得税5万円・住民税2.5万円）。
+          </p>
+          <YenField label="地震保険料" value={form.earthquakePaid} onChange={(v) => onChange({ earthquakePaid: v })} />
+          <YenField
+            label="旧長期損害保険料（H18年末までの契約）"
+            value={form.oldLongTermPaid}
+            onChange={(v) => onChange({ oldLongTermPaid: v })}
+          />
         </fieldset>
 
         {/* iDeCo */}

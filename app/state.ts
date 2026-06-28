@@ -57,6 +57,10 @@ export interface FormState {
   lifePensionOld: number
   /** 子育て世帯（23歳未満扶養）。令和8の一般生命保険(新)の拡充に使用。 */
   lifeChildcare: boolean
+  /** 地震保険料（年間支払額・円）。 */
+  earthquakePaid: number
+  /** 旧長期損害保険料（年間支払額・円。平成18年末までに締結）。 */
+  oldLongTermPaid: number
   /** iDeCo・小規模企業共済等掛金（年額）。 */
   idecoAnnual: number
   /** 住宅ローン控除。 */
@@ -111,6 +115,8 @@ export const defaultForm: FormState = {
   lifePensionNew: 0,
   lifePensionOld: 0,
   lifeChildcare: false,
+  earthquakePaid: 0,
+  oldLongTermPaid: 0,
   idecoAnnual: 0,
   housingEnabled: false,
   housingMoveInYear: 2024,
@@ -164,6 +170,10 @@ export function toInput(f: FormState): TakeHomeInput {
           childcareHousehold: f.lifeChildcare,
         }
       : undefined,
+    earthquakeInsurance:
+      f.earthquakePaid > 0 || f.oldLongTermPaid > 0
+        ? { earthquake: f.earthquakePaid, oldLongTerm: f.oldLongTermPaid }
+        : undefined,
     idecoAnnual: f.idecoAnnual > 0 ? f.idecoAnnual : undefined,
     otherIncome: hasOtherIncome(f)
       ? {

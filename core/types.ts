@@ -74,6 +74,14 @@ export interface LifeInsuranceInput {
   childcareHousehold?: boolean
 }
 
+/** 地震保険料控除の入力。 */
+export interface EarthquakeInsuranceInput {
+  /** 地震保険料の年間支払額（円）。 */
+  earthquake?: number
+  /** 旧長期損害保険料の年間支払額（円。平成18年末までに締結の長期損害保険）。 */
+  oldLongTerm?: number
+}
+
 /** 住宅ローン控除の入力。借入限度額は入居年×取得区分×住宅性能で決まる。 */
 export interface HousingLoanInput {
   /** 居住開始年（西暦。現行制度は2022〜2025）。 */
@@ -170,6 +178,8 @@ export interface TakeHomeInput {
   medicalExpense?: MedicalExpenseInput
   /** 生命保険料控除（Phase 4）。 */
   lifeInsurance?: LifeInsuranceInput
+  /** 地震保険料控除。 */
+  earthquakeInsurance?: EarthquakeInsuranceInput
   /** iDeCo・小規模企業共済等掛金（年額・全額が所得控除）。 */
   idecoAnnual?: number
   /** 住宅ローン控除（税額控除）。 */
@@ -214,6 +224,8 @@ export interface DeductionsBreakdown {
   medical: number
   /** 生命保険料控除（Phase 4）。 */
   lifeInsurance: number
+  /** 地震保険料控除。 */
+  earthquake: number
   /** 小規模企業共済等掛金控除（iDeCo 等・Phase 4）。 */
   smallEnterprise: number
   /** 合計。 */

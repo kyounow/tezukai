@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { medicalExpenseDeduction, medicalExpenseDetail, lifeInsuranceDeduction, smallEnterpriseDeduction } from './extraDeductions'
+import {
+  medicalExpenseDeduction,
+  medicalExpenseDetail,
+  lifeInsuranceDeduction,
+  earthquakeInsuranceDeduction,
+  smallEnterpriseDeduction,
+} from './extraDeductions'
 
 describe('医療費控除', () => {
   it('通常: (支払−保険金)−min(10万, 総所得×5%)', () => {
@@ -66,6 +72,24 @@ describe('生命保険料控除', () => {
   })
   it('介護医療は新制度のみ（旧は無視）', () => {
     expect(lifeInsuranceDeduction({ nursingMedical: { newAmount: 100_000, oldAmount: 100_000 } }, 'incomeTax')).toBe(40_000)
+  })
+})
+
+describe('地震保険料控除', () => {
+  it('所得税: 地震保険料は全額・上限5万円', () => {
+    expect(earthquakeInsuranceDeduction({ earthquake: 30_000 }, 'incomeTax')).toBe(30_000)
+    expect(earthquakeInsuranceDeduction({ earthquake: 80_000 }, 'incomeTax')).toBe(50_000)
+  })
+  it('住民税: 地震保険料は1/2・上限2.5万円', () => {
+    expect(earthquakeInsuranceDeduction({ earthquake: 30_000 }, 'residentTax')).toBe(15_000)
+    expect(earthquakeInsuranceDeduction({ earthquake: 60_000 }, 'residentTax')).toBe(25_000)
+  })
+  it('旧長期損害保険料の段階式（所得税）', () => {
+    expect(earthquakeInsuranceDeduction({ oldLongTerm: 15_000 }, 'incomeTax')).toBe(12_500) // ×1/2+5,000
+    expect(earthquakeInsuranceDeduction({ oldLongTerm: 25_000 }, 'incomeTax')).toBe(15_000) // 上限
+  })
+  it('地震＋旧長期の合算は上限で頭打ち（所得税5万）', () => {
+    expect(earthquakeInsuranceDeduction({ earthquake: 40_000, oldLongTerm: 25_000 }, 'incomeTax')).toBe(50_000)
   })
 })
 

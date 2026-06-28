@@ -14,6 +14,7 @@ import {
   type TaxKind,
 } from './deductions/deductions'
 import {
+  earthquakeInsuranceDeduction,
   lifeInsuranceDeduction,
   medicalExpenseDeduction,
   medicalExpenseDetail,
@@ -45,9 +46,18 @@ function buildDeductions(
     : 0
   const medical = input.medicalExpense ? medicalExpenseDeduction(input.medicalExpense, totalIncome, table) : 0
   const lifeInsurance = input.lifeInsurance ? lifeInsuranceDeduction(input.lifeInsurance, kind, table) : 0
+  const earthquake = input.earthquakeInsurance ? earthquakeInsuranceDeduction(input.earthquakeInsurance, kind, table) : 0
   const smallEnterprise = input.idecoAnnual ? smallEnterpriseDeduction(input.idecoAnnual) : 0
   const total =
-    basic + socialInsuranceTotal + spouse + dependents + specialRelative + medical + lifeInsurance + smallEnterprise
+    basic +
+    socialInsuranceTotal +
+    spouse +
+    dependents +
+    specialRelative +
+    medical +
+    lifeInsurance +
+    earthquake +
+    smallEnterprise
   return {
     basic,
     socialInsurance: socialInsuranceTotal,
@@ -56,6 +66,7 @@ function buildDeductions(
     specialRelative,
     medical,
     lifeInsurance,
+    earthquake,
     smallEnterprise,
     total,
   }

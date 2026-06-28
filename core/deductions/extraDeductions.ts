@@ -1,7 +1,13 @@
 import { getTaxTable } from '@data/taxTables/index'
 import type { DeductionBracket } from '@data/taxTables/2025'
 import type { TaxTable } from '@data/taxTables/types'
-import type { LifeInsuranceCategoryInput, LifeInsuranceInput, MedicalExpenseInput, MedicalMethod } from '../types'
+import type {
+  EarthquakeInsuranceInput,
+  LifeInsuranceCategoryInput,
+  LifeInsuranceInput,
+  MedicalExpenseInput,
+  MedicalMethod,
+} from '../types'
 import type { TaxKind } from './deductions'
 
 /** 段階式 deduction = 支払額×rate + plus（区分の上限は最終ブラケットの plus で表現）。 */
@@ -106,4 +112,21 @@ export function lifeInsuranceDeduction(
 /** 小規模企業共済等掛金控除（iDeCo 等）。支払掛金の全額が控除（所得税・住民税同額）。出典: 国税庁 No.1135。 */
 export function smallEnterpriseDeduction(annualAmount: number): number {
   return Math.max(0, Math.floor(annualAmount))
+}
+
+/**
+ * 地震保険料控除。地震保険料（所得税は全額・上限5万、住民税は1/2・上限2.5万）と
+ * 旧長期損害保険料（経過措置・段階式）の合計を、合算上限で頭打ちにする。
+ * 出典: 国税庁 No.1145、自治体公式（住民税）。
+ */
+export function earthquakeInsuranceDeduction(
+  input: EarthquakeInsuranceInput,
+  kind: TaxKind,
+  table: TaxTable = getTaxTable(),
+): number {
+  const cfg = table.earthquakeInsurance?.[kind]
+  if (!cfg) return 0
+  const earthquake = Math.min(Math.floor((input.earthquake ?? 0) * cfg.earthquake.rate), cfg.earthquake.cap)
+  const oldLongTerm = bracketAmount(cfg.oldLongTerm, input.oldLongTerm ?? 0)
+  return Math.min(earthquake + oldLongTerm, cfg.totalCap)
 }

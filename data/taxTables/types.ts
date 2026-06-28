@@ -100,6 +100,22 @@ export interface LifeInsuranceConfig {
   }
 }
 
+/** 地震保険料控除の所得税用/住民税用の1区分。 */
+export interface EarthquakeInsuranceRegime {
+  /** 地震保険料: 支払額×rate（上限cap）。所得税は全額(rate1)/上限5万、住民税は1/2/上限2.5万。 */
+  readonly earthquake: { readonly rate: number; readonly cap: number }
+  /** 旧長期損害保険料（経過措置）の段階式。 */
+  readonly oldLongTerm: readonly DeductionBracket[]
+  /** 地震＋旧長期の合算上限。 */
+  readonly totalCap: number
+}
+
+/** 地震保険料控除。 */
+export interface EarthquakeInsuranceConfig {
+  readonly incomeTax: EarthquakeInsuranceRegime
+  readonly residentTax: EarthquakeInsuranceRegime
+}
+
 /** 住宅の取得区分（新築・買取再販 / 既存=中古）。 */
 export type HousingConstruction = 'new' | 'used'
 /** 住宅の環境性能区分。 */
@@ -198,6 +214,7 @@ export interface TaxTable {
   /** 拡張控除（Phase 4）。その年度に制度が無ければ未設定。 */
   readonly medicalExpense?: MedicalExpenseConfig
   readonly lifeInsurance?: LifeInsuranceConfig
+  readonly earthquakeInsurance?: EarthquakeInsuranceConfig
   readonly housingLoan?: HousingLoanConfig
   /** 個人事業主モード（Phase 5）。 */
   readonly nationalPension?: NationalPensionConfig
