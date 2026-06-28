@@ -70,6 +70,8 @@ export interface LifeInsuranceInput {
   nursingMedical?: LifeInsuranceCategoryInput
   /** 個人年金保険料。 */
   pension?: LifeInsuranceCategoryInput
+  /** 子育て世帯（23歳未満の扶養親族あり）。令和8年分の一般生命保険(新)の拡充に使用。 */
+  childcareHousehold?: boolean
 }
 
 /** 住宅ローン控除の入力。借入限度額は入居年×取得区分×住宅性能で決まる。 */

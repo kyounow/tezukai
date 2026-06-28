@@ -42,7 +42,7 @@ function YenField({
   )
 }
 
-const MOVE_IN_YEARS = [2022, 2023, 2024, 2025]
+const MOVE_IN_YEARS = [2022, 2023, 2024, 2025, 2026]
 const CONSTRUCTIONS: { value: HousingConstruction; label: string }[] = [
   { value: 'new', label: '新築・買取再販' },
   { value: 'used', label: '中古（既存住宅）' },
@@ -80,6 +80,10 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
           <YenField label="介護医療保険料（新制度のみ）" value={form.lifeNursingNew} onChange={(v) => onChange({ lifeNursingNew: v })} />
           <YenField label="個人年金保険料・新制度" value={form.lifePensionNew} onChange={(v) => onChange({ lifePensionNew: v })} />
           <YenField label="個人年金保険料・旧制度" value={form.lifePensionOld} onChange={(v) => onChange({ lifePensionOld: v })} />
+          <label className="field__check field__check--small">
+            <input type="checkbox" checked={form.lifeChildcare} onChange={(e) => onChange({ lifeChildcare: e.target.checked })} />
+            23歳未満の扶養親族がいる（令和8: 一般生命保険・新の所得税控除が6万円に拡充）
+          </label>
         </fieldset>
 
         {/* iDeCo */}
@@ -135,7 +139,8 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
                   ))}
                 </select>
               </label>
-              {form.housingConstruction === 'new' && (form.housingMoveInYear === 2024 || form.housingMoveInYear === 2025) && (
+              {((form.housingConstruction === 'new' && form.housingMoveInYear >= 2024) ||
+                (form.housingConstruction === 'used' && form.housingMoveInYear >= 2026)) && (
                 <label className="field__check field__check--small">
                   <input type="checkbox" checked={form.housingChildcare} onChange={(e) => onChange({ housingChildcare: e.target.checked })} />
                   子育て世帯・若者夫婦世帯（借入限度額の上乗せ）

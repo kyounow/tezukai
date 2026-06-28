@@ -22,7 +22,7 @@ import type {
 } from './2025'
 
 /** 対象年度（西暦）。年度追加時にこのユニオンを拡張する。 */
-export type TaxYear = 2025
+export type TaxYear = 2025 | 2026
 
 export interface ResidentTaxConfig {
   readonly incomeRate: { readonly city: number; readonly prefecture: number; readonly total: number }
@@ -55,7 +55,8 @@ export interface HumanDeductionDiff {
 }
 
 export interface SocialInsuranceConfig {
-  readonly health: { readonly rate: number }
+  /** 健康保険。childSupportRate は子ども・子育て支援金率（令和8年度新設・健保に上乗せ）。 */
+  readonly health: { readonly rate: number; readonly childSupportRate?: number }
   readonly longTermCare: { readonly rate: number; readonly minAge: number; readonly maxAge: number }
   readonly pension: { readonly rate: number }
   readonly employment: { readonly employeeRate: number }
@@ -89,6 +90,14 @@ export interface LifeInsuranceConfig {
   readonly combinedCategoryCap: { readonly incomeTax: number; readonly residentTax: number }
   /** 3区分合計の適用限度額。 */
   readonly totalCap: { readonly incomeTax: number; readonly residentTax: number }
+  /**
+   * 子育て世帯（23歳未満の扶養親族あり）の拡充（令和8年分のみ）。
+   * 一般生命保険料(新契約)の所得税の段階式と区分上限を上書きする。住民税は据置。
+   */
+  readonly childcareGeneralNew?: {
+    readonly incomeTax: readonly DeductionBracket[]
+    readonly combinedCap: number
+  }
 }
 
 /** 住宅の取得区分（新築・買取再販 / 既存=中古）。 */
@@ -105,11 +114,22 @@ export interface HousingLoanConfig {
   readonly residentCarryover: { readonly rate: number; readonly cap: number }
   /** 控除期間（表示用・新築/中古）。 */
   readonly period: { readonly new: number; readonly used: number }
-  /** 借入限度額（円）。入居年(西暦)→住宅性能区分。childcare は令和6・7新築の上乗せ。 */
+  /** 借入限度額（円）。入居年(西暦)→住宅性能区分。childcare は令和6以降新築の上乗せ。 */
   readonly limits: {
     readonly new: Readonly<Record<number, Readonly<Record<HousingPerformance, number>>>>
     readonly newChildcare: Readonly<Record<number, Readonly<Record<HousingPerformance, number>>>>
+    /** 中古（既存）の標準。入居年に依存しない場合のフォールバック。 */
     readonly used: Readonly<Record<HousingPerformance, number>>
+    /** 中古で入居年により限度が異なる場合（令和8以降は子育て上乗せもあり）。 */
+    readonly usedByYear?: Readonly<
+      Record<
+        number,
+        {
+          readonly standard: Readonly<Record<HousingPerformance, number>>
+          readonly childcare: Readonly<Record<HousingPerformance, number>>
+        }
+      >
+    >
   }
 }
 

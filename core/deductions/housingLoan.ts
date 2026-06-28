@@ -9,6 +9,11 @@ import type { HousingLoanInput } from '../types'
  */
 export function housingLoanLimit(input: HousingLoanInput, cfg: HousingLoanConfig): number {
   if (input.construction === 'used') {
+    const byYear = cfg.limits.usedByYear?.[input.moveInYear]
+    if (byYear) {
+      const map = input.childcareHousehold ? byYear.childcare : byYear.standard
+      return map[input.performance] ?? 0
+    }
     return cfg.limits.used[input.performance] ?? 0
   }
   const childcareMap = input.childcareHousehold ? cfg.limits.newChildcare[input.moveInYear] : undefined

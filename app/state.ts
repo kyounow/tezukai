@@ -1,4 +1,4 @@
-import { DEFAULT_TAX_YEAR } from '@core/index'
+import { LATEST_TAX_YEAR } from '@core/index'
 import type { HousingConstruction, HousingPerformance, TakeHomeInput, TaxYear } from '@core/index'
 
 /** 入力フォームの状態（UI 都合の平坦な構造）。 */
@@ -37,6 +37,8 @@ export interface FormState {
   lifeNursingNew: number
   lifePensionNew: number
   lifePensionOld: number
+  /** 子育て世帯（23歳未満扶養）。令和8の一般生命保険(新)の拡充に使用。 */
+  lifeChildcare: boolean
   /** iDeCo・小規模企業共済等掛金（年額）。 */
   idecoAnnual: number
   /** 住宅ローン控除。 */
@@ -62,7 +64,7 @@ export interface FormState {
 }
 
 export const defaultForm: FormState = {
-  taxYear: DEFAULT_TAX_YEAR,
+  taxYear: LATEST_TAX_YEAR,
   salaryIncome: 5_000_000,
   age: 35,
   hasSpouse: false,
@@ -81,6 +83,7 @@ export const defaultForm: FormState = {
   lifeNursingNew: 0,
   lifePensionNew: 0,
   lifePensionOld: 0,
+  lifeChildcare: false,
   idecoAnnual: 0,
   housingEnabled: false,
   housingMoveInYear: 2024,
@@ -123,6 +126,7 @@ export function toInput(f: FormState): TakeHomeInput {
           general: { newAmount: f.lifeGeneralNew, oldAmount: f.lifeGeneralOld },
           nursingMedical: { newAmount: f.lifeNursingNew },
           pension: { newAmount: f.lifePensionNew, oldAmount: f.lifePensionOld },
+          childcareHousehold: f.lifeChildcare,
         }
       : undefined,
     idecoAnnual: f.idecoAnnual > 0 ? f.idecoAnnual : undefined,

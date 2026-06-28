@@ -48,7 +48,9 @@ export function socialInsurance(
   const isCareInsured = age >= si.longTermCare.minAge && age <= si.longTermCare.maxAge
 
   // 本人負担＝労使折半（料率÷2）。月額で端数処理してから12か月分。
-  const health = roundPremium((healthStandard * si.health.rate) / 2) * 12
+  // 令和8年度〜は健康保険料率に子ども・子育て支援金率を加算（健保に含めて表示）。
+  const healthRate = si.health.rate + (si.health.childSupportRate ?? 0)
+  const health = roundPremium((healthStandard * healthRate) / 2) * 12
   const longTermCare = isCareInsured ? roundPremium((healthStandard * si.longTermCare.rate) / 2) * 12 : 0
   const pension = roundPremium((pensionStandard * si.pension.rate) / 2) * 12
   const employment = Math.floor(salaryIncome * si.employment.employeeRate)

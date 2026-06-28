@@ -74,19 +74,32 @@ export function lifeInsuranceDeduction(
   const cfg = table.lifeInsurance
   if (!cfg) return 0
 
-  const category = (cat: LifeInsuranceCategoryInput | undefined, allowOld: boolean): number => {
+  const category = (
+    cat: LifeInsuranceCategoryInput | undefined,
+    allowOld: boolean,
+    newBrackets: typeof cfg.newRegime.incomeTax,
+    combinedCap: number,
+  ): number => {
     if (!cat) return 0
-    const newCalc = bracketAmount(cfg.newRegime[kind], cat.newAmount ?? 0)
+    const newCalc = bracketAmount(newBrackets, cat.newAmount ?? 0)
     const oldCalc = allowOld ? bracketAmount(cfg.oldRegime[kind], cat.oldAmount ?? 0) : 0
     if ((cat.newAmount ?? 0) > 0 && (cat.oldAmount ?? 0) > 0 && allowOld) {
       // 新旧併用は合計を区分上限（新制度の上限）で頭打ち、旧のみとの有利な方。
-      return Math.max(oldCalc, Math.min(newCalc + oldCalc, cfg.combinedCategoryCap[kind]))
+      return Math.max(oldCalc, Math.min(newCalc + oldCalc, combinedCap))
     }
     return Math.max(newCalc, oldCalc)
   }
 
+  // 令和8年分の子育て世帯は一般生命保険(新)の所得税のみ上限6万円に拡充。
+  const childcareGeneral = input.childcareHousehold && kind === 'incomeTax' ? cfg.childcareGeneralNew : undefined
+  const generalNew = childcareGeneral ? childcareGeneral.incomeTax : cfg.newRegime[kind]
+  const generalCap = childcareGeneral ? childcareGeneral.combinedCap : cfg.combinedCategoryCap[kind]
+
   // 介護医療保険料は新制度のみ（旧制度に区分なし）。
-  const sum = category(input.general, true) + category(input.nursingMedical, false) + category(input.pension, true)
+  const sum =
+    category(input.general, true, generalNew, generalCap) +
+    category(input.nursingMedical, false, cfg.newRegime[kind], cfg.combinedCategoryCap[kind]) +
+    category(input.pension, true, cfg.newRegime[kind], cfg.combinedCategoryCap[kind])
   return Math.min(sum, cfg.totalCap[kind])
 }
 
