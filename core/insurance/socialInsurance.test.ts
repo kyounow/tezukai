@@ -88,6 +88,39 @@ describe('賞与分離モード（月給＋賞与）', () => {
   })
 })
 
+describe('組合健保（本人負担率を手入力）', () => {
+  const t2025 = getTaxTable(2025)
+
+  it('本人負担率を折半せずそのまま使う（協会けんぽ東京より安くできる）', () => {
+    const kumiai = socialInsurance(2_400_000, 30, t2025, undefined, { type: 'kumiai', kumiaiHealthRate: 0.045 })
+    const kyokai = socialInsurance(2_400_000, 30, t2025) // 協会けんぽ東京 9,910×12
+    // 標準報酬20万×4.5%（折半しない）×12
+    expect(kumiai.health).toBe(9_000 * 12)
+    expect(kumiai.health).toBeLessThan(kyokai.health)
+    // 厚生年金・雇用保険は組合健保でも変わらない
+    expect(kumiai.pension).toBe(kyokai.pension)
+    expect(kumiai.employment).toBe(kyokai.employment)
+  })
+
+  it('組合の介護保険料率（40〜64歳）も本人負担率を直接適用', () => {
+    const r = socialInsurance(2_400_000, 50, t2025, undefined, {
+      type: 'kumiai',
+      kumiaiHealthRate: 0.045,
+      kumiaiCareRate: 0.009,
+    })
+    expect(r.longTermCare).toBe(1_800 * 12) // 20万×0.9%×12
+    // 30歳（介護対象外）は0
+    const young = socialInsurance(2_400_000, 30, t2025, undefined, { type: 'kumiai', kumiaiHealthRate: 0.045, kumiaiCareRate: 0.009 })
+    expect(young.longTermCare).toBe(0)
+  })
+
+  it('type=kyokai は協会けんぽ（既定）と同じ', () => {
+    const explicit = socialInsurance(2_400_000, 30, t2025, undefined, { type: 'kyokai' })
+    const def = socialInsurance(2_400_000, 30, t2025)
+    expect(explicit).toEqual(def)
+  })
+})
+
 // 協会けんぽ(東京)令和7年度・日本年金機構の料額表「折半額」と一致することを確認。
 // 折半額は独立リサーチ(一次情報)で全等級を突合済み。
 describe('公式料額表の折半額と一致', () => {

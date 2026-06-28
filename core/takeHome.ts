@@ -144,7 +144,7 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   // 社会保険料（給与＝健保/厚年/雇用、事業＝国民年金＋国保）
   const si =
     mode === 'employee'
-      ? socialInsurance(salaryIncome, input.age, table, input.salaryBreakdown)
+      ? socialInsurance(salaryIncome, input.age, table, input.salaryBreakdown, input.healthInsurance)
       : nationalInsurance(totalIncome, input.age, input.kokuhoMembers, table)
 
   const incomeTaxDeductions = buildDeductions('incomeTax', totalIncome, si.total, input, table)

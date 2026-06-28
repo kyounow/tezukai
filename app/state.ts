@@ -25,6 +25,12 @@ export interface FormState {
   annualBonus: number
   /** 賞与の支給回数。 */
   bonusCount: number
+  /** 健康保険の種類（協会けんぽ／組合健保）。 */
+  healthInsuranceType: 'kyokai' | 'kumiai'
+  /** 組合健保の本人負担の健康保険料率（%）。 */
+  kumiaiHealthRatePct: number
+  /** 組合健保の本人負担の介護保険料率（%・40〜64歳）。 */
+  kumiaiCareRatePct: number
   /** 本人の年齢。 */
   age: number
   /** 配偶者の有無。 */
@@ -106,6 +112,9 @@ export const defaultForm: FormState = {
   monthlySalary: 300_000,
   annualBonus: 1_000_000,
   bonusCount: 2,
+  healthInsuranceType: 'kyokai',
+  kumiaiHealthRatePct: 4.95,
+  kumiaiCareRatePct: 0.79,
   age: 35,
   hasSpouse: false,
   spouseSalaryIncome: 0,
@@ -160,6 +169,10 @@ export function toInput(f: FormState): TakeHomeInput {
     salaryBreakdown: f.bonusMode
       ? { monthlySalary: f.monthlySalary, annualBonus: f.annualBonus, bonusCount: f.bonusCount }
       : undefined,
+    healthInsurance:
+      !sole && f.healthInsuranceType === 'kumiai'
+        ? { type: 'kumiai', kumiaiHealthRate: f.kumiaiHealthRatePct / 100, kumiaiCareRate: f.kumiaiCareRatePct / 100 }
+        : undefined,
     age: f.age,
     spouse: f.hasSpouse ? { salaryIncome: f.spouseSalaryIncome, elderly: f.spouseElderly } : undefined,
     dependents: {

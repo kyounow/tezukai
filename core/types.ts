@@ -145,6 +145,16 @@ export interface SalaryBreakdown {
 /** 納税者の区分（給与所得者／個人事業主）。 */
 export type TaxpayerMode = 'employee' | 'soleProprietor'
 
+/** 健康保険の種類（協会けんぽ／組合健保・手入力）。 */
+export interface HealthInsuranceInput {
+  /** kyokai＝協会けんぽ（年度テーブルの料率を折半）、kumiai＝組合健保（本人負担率を手入力）。 */
+  type: 'kyokai' | 'kumiai'
+  /** 組合健保の被保険者（本人）負担の健康保険料率（割合。例 0.0495＝4.95%）。 */
+  kumiaiHealthRate?: number
+  /** 組合健保の被保険者（本人）負担の介護保険料率（割合）。40〜64歳のみ適用。 */
+  kumiaiCareRate?: number
+}
+
 /** 青色申告特別控除の区分（白色＝none）。 */
 export type BlueDeduction = 'none' | '10' | '55' | '65'
 
@@ -168,6 +178,8 @@ export interface TakeHomeInput {
   salaryIncome: number
   /** 賞与を分離して社保を精密計算する場合の内訳（省略時は年収÷12の簡易計算）。 */
   salaryBreakdown?: SalaryBreakdown
+  /** 健康保険の種類（省略時は協会けんぽ＝年度テーブルの料率を折半）。 */
+  healthInsurance?: HealthInsuranceInput
   /** 本人の年齢。介護保険第2号被保険者（40〜64歳）の判定に使用。 */
   age: number
   /** 配偶者（いなければ省略）。 */

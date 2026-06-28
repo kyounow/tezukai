@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AVAILABLE_TAX_YEARS } from '@core/index'
 import type { BlueDeduction, TaxpayerMode, TaxYear } from '@core/index'
 import type { FormState } from '../state'
@@ -207,6 +208,51 @@ export function InputForm({ form, onChange }: Props) {
         </div>
       )}
 
+      {/* 健康保険の種類 */}
+      <div className="field">
+        <label className="field__label" htmlFor="health-type">
+          健康保険の種類
+        </label>
+        <select
+          id="health-type"
+          className="field__select"
+          value={form.healthInsuranceType}
+          onChange={(e) => onChange({ healthInsuranceType: e.target.value as 'kyokai' | 'kumiai' })}
+        >
+          <option value="kyokai">協会けんぽ（東京・標準）</option>
+          <option value="kumiai">組合健保（料率を手入力）</option>
+        </select>
+      </div>
+      {form.healthInsuranceType === 'kumiai' && (
+        <>
+          <p className="field__note">
+            給与明細や健保組合のサイトに記載の<strong>被保険者（本人）負担の保険料率</strong>を入力してください。
+            組合健保は事業主が折半より多く負担することが多く、協会けんぽより安い場合があります（労使合計の料率しか分からない場合は半分が目安）。
+            厚生年金・雇用保険は変わりません。
+          </p>
+          <RateField
+            id="kumiai-health"
+            label="健康保険料率（本人負担）"
+            value={form.kumiaiHealthRatePct}
+            max={20}
+            onCommit={(v) => onChange({ kumiaiHealthRatePct: v })}
+          />
+          {form.age >= 40 && form.age <= 64 ? (
+            <RateField
+              id="kumiai-care"
+              label="介護保険料率（本人負担・40〜64歳）"
+              value={form.kumiaiCareRatePct}
+              max={10}
+              onCommit={(v) => onChange({ kumiaiCareRatePct: v })}
+            />
+          ) : (
+            <p className="field__note">
+              現在の年齢（{form.age}歳）では介護保険料は加算されないため、介護保険料率の入力は不要です（介護保険は40〜64歳のみ）。
+            </p>
+          )}
+        </>
+      )}
+
         </>
       )}
 
@@ -333,5 +379,53 @@ function CountField({
         onChange={(e) => onChange(Math.max(0, Math.min(20, toNumber(e.target.value))))}
       />
     </label>
+  )
+}
+
+/** 料率(%)の入力。編集途中の空欄・小数点を許容し、確定（blur）時に 0〜max へ丸める。 */
+function RateField({
+  id,
+  label,
+  value,
+  max,
+  onCommit,
+}: {
+  id: string
+  label: string
+  value: number
+  max: number
+  onCommit: (v: number) => void
+}) {
+  const [text, setText] = useState(String(value))
+  return (
+    <div className="field">
+      <label className="field__label" htmlFor={id}>
+        {label}
+      </label>
+      <div className="field__inline">
+        <input
+          id={id}
+          className="field__number field__number--narrow"
+          type="number"
+          min={0}
+          max={max}
+          step={0.01}
+          value={text}
+          onChange={(e) => {
+            const t = e.target.value
+            setText(t)
+            const n = Number(t)
+            if (t !== '' && Number.isFinite(n)) onCommit(Math.max(0, Math.min(max, n)))
+          }}
+          onBlur={() => {
+            const n = Number(text)
+            const clamped = Number.isFinite(n) ? Math.max(0, Math.min(max, n)) : 0
+            setText(String(clamped))
+            onCommit(clamped)
+          }}
+        />
+        <span className="field__unit">%</span>
+      </div>
+    </div>
   )
 }
