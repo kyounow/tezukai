@@ -1,8 +1,14 @@
 /**
  * 令和8年（2026）税率・控除データ。
  *
- * 税（基礎控除95/88/68/63/58・給与所得控除65万・所得税速算表・住民税）は令和7年分と同じため
- * 2025.ts の定数を再利用し、令和8で変わる項目だけを上書きする。
+ * **令和8年度税制改正（令和8年12月1日施行・令和8年分以後に適用）を反映**。所得税速算表・住民税は
+ * 令和7年分と同じため 2025.ts を再利用し、令和8改正で変わる項目（基礎控除・給与所得控除・所得要件）と
+ * 令和8で変わる項目だけを上書きする。
+ *   - 基礎控除（所得税・令和8/9年分）: 本則58万→62万。上乗せ特例で 合計所得489万以下=104万／
+ *     489超655万=67万／655超2350万=62万（いわゆる「178万円の壁」）。出典: 国税庁「令和8年4月源泉所得税の改正のあらまし」、財務省 令和8年度税制改正。
+ *   - 給与所得控除: 最低保障 65万→74万（本則69万＋令和8/9年分の特例5万）。
+ *   - 配偶者・扶養の合計所得要件: 58万→62万（控除額・段階表は不変、所得要件のみ変更）。
+ *   - 住民税の基礎控除（43万）・調整控除の人的控除差（5万近似）は令和8で据置（2025を再利用）。
  *   - 社会保険料（令和8年度）: 協会けんぽ東京 健保9.85%・介護1.62%・雇用5/1000、
  *     子ども・子育て支援金率0.23%（新設）。出典: 協会けんぽ R8 保険料額表、厚労省 R8 雇用保険料率。
  *   - 生命保険料控除: 子育て世帯（23歳未満扶養）の一般生命保険(新)の所得税上限を6万円に拡充
@@ -18,13 +24,12 @@ import type {
   SocialInsuranceConfig,
   TaxTable,
 } from './types'
+import type { AmountByIncomeBand, DeductionBracket } from './2025'
 import {
-  BASIC_DEDUCTION_INCOME_TAX_2025,
   EARTHQUAKE_INSURANCE_2025,
   NATIONAL_HEALTH_INSURANCE_2025,
   BASIC_DEDUCTION_RESIDENT_TAX_2025,
   DEPENDENT_DEDUCTION_2025,
-  EMPLOYMENT_INCOME_DEDUCTION_2025,
   HEALTH_GRADES_2025,
   HOUSING_LOAN_2025,
   HUMAN_DEDUCTION_DIFF_2025,
@@ -37,13 +42,46 @@ import {
   RESIDENT_TAX_NON_TAXABLE_2025,
   SPECIAL_RELATIVE_DEDUCTION_2025,
   SPOUSE_DEDUCTION_2025,
-  SPOUSE_DEDUCTION_INCOME_LIMIT,
   SPOUSE_OWNER_INCOME_TIERS,
   SPOUSE_SPECIAL_DEDUCTION_2025,
   SPOUSE_SPECIAL_DEDUCTION_INCOME_LIMIT,
 } from './2025'
 
 export const TAX_YEAR_2026 = 2026 as const
+
+// ── 令和8年度改正で変わる所得税の控除（令和8・令和9年分で共通。2027.ts も再利用）──
+
+/**
+ * 所得税の基礎控除（令和8・令和9年分）。本則62万＋上乗せ特例。
+ * 出典: 国税庁「令和8年4月源泉所得税の改正のあらまし」（合計所得489万以下=104万／489超655万=67万／
+ * 655超2350万=62万／2350超2400万=48万／2400超2450万=32万／2450超2500万=16万／2500万超=0）。
+ * 注: 令和10年分以後は ≤132万=99万・それ超〜2350万=62万 に変わる（時限特例終了）。
+ */
+export const BASIC_DEDUCTION_INCOME_TAX_2026: readonly AmountByIncomeBand[] = [
+  { upTo: 4_890_000, amount: 1_040_000 },
+  { upTo: 6_550_000, amount: 670_000 },
+  { upTo: 23_500_000, amount: 620_000 },
+  { upTo: 24_000_000, amount: 480_000 },
+  { upTo: 24_500_000, amount: 320_000 },
+  { upTo: 25_000_000, amount: 160_000 },
+  { upTo: null, amount: 0 },
+]
+
+/**
+ * 給与所得控除（令和8・令和9年分）。最低保障 65万→74万（本則69万＋令和8/9特例5万）。
+ * 74万＝給与収入220万で 30%×収入+8万 と一致するため、220万までが最低保障。以降は令和7と同じ。
+ * 出典: 国税庁「令和8年4月源泉所得税の改正のあらまし」。
+ */
+export const EMPLOYMENT_INCOME_DEDUCTION_2026: readonly DeductionBracket[] = [
+  { upTo: 2_200_000, rate: 0, plus: 740_000 },
+  { upTo: 3_600_000, rate: 0.3, plus: 80_000 },
+  { upTo: 6_600_000, rate: 0.2, plus: 440_000 },
+  { upTo: 8_500_000, rate: 0.1, plus: 1_100_000 },
+  { upTo: null, rate: 0, plus: 1_950_000 },
+]
+
+/** 配偶者控除/配偶者特別控除の判定境界（令和8改正: 58万→62万。控除額・段階表は不変）。 */
+export const SPOUSE_DEDUCTION_INCOME_LIMIT_2026 = 620_000
 
 // 社会保険料（令和8年度・協会けんぽ東京）。子ども・子育て支援金0.23%は健保に上乗せ。
 const SOCIAL_INSURANCE_2026: SocialInsuranceConfig = {
@@ -101,12 +139,13 @@ const NATIONAL_PENSION_2026: NationalPensionConfig = { annual: 215_040 } // 17,9
 
 export const TAX_TABLE_2026: TaxTable = {
   year: TAX_YEAR_2026,
-  employmentIncomeDeduction: EMPLOYMENT_INCOME_DEDUCTION_2025,
+  employmentIncomeDeduction: EMPLOYMENT_INCOME_DEDUCTION_2026, // 令和8改正: 最低保障74万
   incomeTaxBrackets: INCOME_TAX_BRACKETS_2025,
   reconstructionSurtaxRate: RECONSTRUCTION_SURTAX_RATE,
-  basicDeduction: { incomeTax: BASIC_DEDUCTION_INCOME_TAX_2025, residentTax: BASIC_DEDUCTION_RESIDENT_TAX_2025 },
+  // 令和8改正: 所得税の基礎控除を新ティアに。住民税の基礎控除(43万)は据置。
+  basicDeduction: { incomeTax: BASIC_DEDUCTION_INCOME_TAX_2026, residentTax: BASIC_DEDUCTION_RESIDENT_TAX_2025 },
   ownerIncomeTiers: SPOUSE_OWNER_INCOME_TIERS,
-  spouseDeductionIncomeLimit: SPOUSE_DEDUCTION_INCOME_LIMIT,
+  spouseDeductionIncomeLimit: SPOUSE_DEDUCTION_INCOME_LIMIT_2026, // 令和8改正: 58万→62万
   spouseSpecialDeductionIncomeLimit: SPOUSE_SPECIAL_DEDUCTION_INCOME_LIMIT,
   spouseDeduction: SPOUSE_DEDUCTION_2025,
   spouseSpecialDeduction: SPOUSE_SPECIAL_DEDUCTION_2025,

@@ -22,7 +22,7 @@ import type {
 } from './2025'
 
 /** 対象年度（西暦）。年度追加時にこのユニオンを拡張する。 */
-export type TaxYear = 2025 | 2026
+export type TaxYear = 2025 | 2026 | 2027
 
 export interface ResidentTaxConfig {
   readonly incomeRate: { readonly city: number; readonly prefecture: number; readonly total: number }
@@ -224,4 +224,6 @@ export interface TaxTable {
   readonly nationalHealthInsurance?: NationalHealthInsuranceConfig
   /** データで表せない式変更のときのみ使用（原則 undefined）。 */
   readonly rulesetVersion?: number
+  /** 暫定（工事中）。今後の税制改正で内容が変わり得る年度。UIで明示する。 */
+  readonly provisional?: boolean
 }

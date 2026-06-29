@@ -69,7 +69,10 @@ export function ResultView({ result: r }: Props) {
             <Row label="うち事業所得（青色申告特別控除後）" value={yen(r.businessIncome)} />
           )}
           <Row label={socialLabel} value={`− ${yen(r.socialInsurance.total)}`} />
-          <Row label="所得税（復興特別所得税込み）" value={`− ${yen(r.incomeTax)}`} />
+          <Row
+            label={r.taxYear >= 2027 ? '所得税（復興1.1%＋防衛特別所得税1.0%込み）' : '所得税（復興特別所得税込み）'}
+            value={`− ${yen(r.incomeTax)}`}
+          />
           <Row label="住民税（所得割＋均等割＋森林環境税）" value={`− ${yen(r.residentTax)}`} />
           <Row label="年間手取り" value={yen(r.takeHome)} strong highlight />
         </tbody>

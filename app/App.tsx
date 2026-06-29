@@ -25,6 +25,16 @@ export function App() {
         <p className="app__subtitle">手取り税金シミュレータ（{eraLabel(result.taxYear)}・概算）</p>
       </header>
 
+      {getTaxTable(form.taxYear).provisional && (
+        <div className="app__banner" role="status" aria-live="polite">
+          ※ <strong>{eraLabel(form.taxYear)}分は暫定（工事中）</strong>です。所得税は確定済みの令和8年度改正（基礎控除・給与所得控除）を反映していますが、
+          今後の税制改正で内容が変わる可能性があります。令和9年分は<strong>防衛特別所得税1.0%を新設・復興特別所得税を1.1%に引下げ</strong>（合算2.1%で税額は不変）。
+          社会保険料率（協会けんぽ・雇用保険・子ども子育て支援金）は<strong>令和8年度を流用</strong>しています（国民年金のみ令和9確定額。
+          個人事業主の国民健康保険は令和7年度〔東京特別区〕を流用）。厚生年金の標準報酬月額の上限引上げ（令和9年9月〜68万円）は
+          年度途中改定のため未反映で、高所得者の厚生年金保険料を低め（手取りを高め）に概算します。
+        </div>
+      )}
+
       <div className="app__grid">
         <div className="app__col">
           <InputForm form={form} onChange={onChange} />

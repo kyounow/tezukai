@@ -47,6 +47,7 @@ export function InputForm({ form, onChange }: Props) {
           {AVAILABLE_TAX_YEARS.map((y) => (
             <option key={y} value={y}>
               {eraLabel(y)}
+              {getTaxTable(y).provisional ? '・暫定' : ''}
             </option>
           ))}
         </select>

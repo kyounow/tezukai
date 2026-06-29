@@ -11,21 +11,24 @@
 import type { TaxTable, TaxYear } from './types'
 import { TAX_TABLE_2025 } from './2025'
 import { TAX_TABLE_2026 } from './2026'
+import { TAX_TABLE_2027 } from './2027'
 
 /** 登録済みの年度別ルールセット。 */
 export const TAX_TABLES: Readonly<Record<TaxYear, TaxTable>> = {
   2025: TAX_TABLE_2025,
   2026: TAX_TABLE_2026,
+  2027: TAX_TABLE_2027,
 }
 
 /** コア API の既定の対象年度（taxYear 省略時のフォールバック）。後方互換のため 2025。 */
 export const DEFAULT_TAX_YEAR: TaxYear = 2025
 
-/** 選択可能な年度（新しい順）。先頭が最新＝UI の初期選択に使う。 */
-export const AVAILABLE_TAX_YEARS: readonly TaxYear[] = [2026, 2025]
+/** 選択可能な年度（新しい順）。先頭がドロップダウンの最上段。 */
+export const AVAILABLE_TAX_YEARS: readonly TaxYear[] = [2027, 2026, 2025]
 
-/** 最新の対象年度（UI の初期表示に使用）。 */
-export const LATEST_TAX_YEAR: TaxYear = AVAILABLE_TAX_YEARS[0]
+/** UI の初期選択。暫定（工事中）でない最新の確定年度を使う（令和9は明示選択のみ）。 */
+export const LATEST_TAX_YEAR: TaxYear =
+  AVAILABLE_TAX_YEARS.find((y) => !TAX_TABLES[y].provisional) ?? AVAILABLE_TAX_YEARS[0]
 
 /** 年度から TaxTable を取得する。未登録の年度は例外。 */
 export function getTaxTable(year: TaxYear = DEFAULT_TAX_YEAR): TaxTable {

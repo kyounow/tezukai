@@ -64,3 +64,33 @@ describe('令和8年で calculateTakeHome が動く', () => {
     expect(r2026.socialInsurance.total).not.toBe(r2025.socialInsurance.total)
   })
 })
+
+// 令和8年度税制改正（令和8年12月1日施行・令和8年分以後）。基礎控除62万本則＋特例、給与所得控除74万。
+// 出典: 国税庁「令和8年4月源泉所得税の改正のあらまし」、財務省 令和8年度税制改正。
+describe('令和8改正の所得税（基礎控除・給与所得控除・178万円の壁）', () => {
+  it('年収500万・単身: 基礎控除104万で課税所得が下がり所得税が減る', () => {
+    const r = calculateTakeHome({ salaryIncome: 5_000_000, age: 30, taxYear: 2026 })
+    expect(r.incomeTaxDeductions.basic).toBe(1_040_000) // 合計所得356万→104万（令和7は68万）
+    expect(r.taxableForIncomeTax).toBe(1_796_000) // 5%帯（令和7は2,158,000で10%帯）
+    expect(r.incomeTax).toBe(91_600) // 1,796,000×5%×1.021（令和7は120,700）
+    expect(r.residentTax).toBe(243_000) // 住民税基礎控除は43万で据置
+    expect(r.takeHome).toBe(3_942_252)
+  })
+
+  it('給与所得控除の最低保障74万（年収220万まで）', () => {
+    const r = calculateTakeHome({ salaryIncome: 2_200_000, age: 30, taxYear: 2026 })
+    expect(r.employmentIncome).toBe(2_200_000 - 740_000) // 給与所得＝収入−74万
+  })
+
+  it('178万円の壁: 給与収入178万・単身は課税所得0・所得税0', () => {
+    const r = calculateTakeHome({ salaryIncome: 1_780_000, age: 30, taxYear: 2026 })
+    expect(r.employmentIncome).toBe(1_040_000) // 178万−給与所得控除74万
+    expect(r.taxableForIncomeTax).toBe(0) // 104万−基礎控除104万
+    expect(r.incomeTax).toBe(0)
+  })
+
+  it('配偶者控除の所得要件が62万に（配偶者の給与収入136万まで配偶者控除）', () => {
+    const table = getTaxTable(2026)
+    expect(table.spouseDeductionIncomeLimit).toBe(620_000)
+  })
+})

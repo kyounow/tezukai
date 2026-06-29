@@ -45,7 +45,7 @@ export interface FormState {
   depUnder16: number
   /** 一般の扶養親族（16〜18・23〜69歳）の人数。 */
   depGeneral: number
-  /** 特定扶養親族（19〜22歳・所得58万以下）の人数。 */
+  /** 特定扶養親族（19〜22歳・合計所得が要件以下＝令和7は58万・令和8〜は62万）の人数。 */
   depSpecified: number
   /** 老人扶養親族・同居老親等の人数。 */
   depElderlyCoLiving: number
