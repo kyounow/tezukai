@@ -25,6 +25,8 @@ export function ResultView({ result: r }: Props) {
   const base = Math.max(1, r.grossIncome)
   const grossLabel = isSole ? '事業収入−必要経費（＋給与以外の所得）' : '額面年収'
   const socialLabel = isSole ? '社会保険料（国民年金・国民健康保険）' : '社会保険料（健保・厚年・雇用ほか）'
+  // 令和9〜は復興特別所得税1.1%＋防衛特別所得税1.0%、令和8以前は復興2.1%。
+  const surtaxNote = r.taxYear >= 2027 ? '復興1.1%＋防衛特別所得税1.0%込み' : '復興特別所得税込み'
 
   return (
     <section className="card result" aria-label="計算結果">
@@ -69,10 +71,7 @@ export function ResultView({ result: r }: Props) {
             <Row label="うち事業所得（青色申告特別控除後）" value={yen(r.businessIncome)} />
           )}
           <Row label={socialLabel} value={`− ${yen(r.socialInsurance.total)}`} />
-          <Row
-            label={r.taxYear >= 2027 ? '所得税（復興1.1%＋防衛特別所得税1.0%込み）' : '所得税（復興特別所得税込み）'}
-            value={`− ${yen(r.incomeTax)}`}
-          />
+          <Row label={`所得税（${surtaxNote}）`} value={`− ${yen(r.incomeTax)}`} />
           <Row label="住民税（所得割＋均等割＋森林環境税）" value={`− ${yen(r.residentTax)}`} />
           <Row label="年間手取り" value={yen(r.takeHome)} strong highlight />
         </tbody>
@@ -120,6 +119,7 @@ export function ResultView({ result: r }: Props) {
             <SubHeader label="所得税" />
             <Row label="所得控除の合計" value={yen(r.incomeTaxDeductions.total)} />
             <Row label="課税所得（1,000円未満切捨て）" value={yen(r.taxableForIncomeTax)} />
+            <Row label={`所得税額（${surtaxNote}）`} value={yen(r.incomeTax)} strong />
             <SubHeader label="住民税" />
             <Row label="所得控除の合計" value={yen(r.residentTaxDeductions.total)} />
             <Row label="課税標準（1,000円未満切捨て）" value={yen(r.taxableForResidentTax)} />
