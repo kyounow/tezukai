@@ -143,6 +143,53 @@ describe('分割育休（複数期間）', () => {
   })
 })
 
+describe('年またぎの育休（暦年でクリップ）', () => {
+  // 育休 2025/11/1〜2026/4/30（181日）。月給30万＝賃金日額10,000。
+  const crossYear = { periods: [{ startDate: '2025-11-01', endDate: '2026-04-30' }], preMonthlySalary: 300_000 }
+
+  it('year未指定なら全期間を1年として扱う（後方互換）', () => {
+    const r = computeChildcareLeave(crossYear, cfg)
+    expect(r.leaveDays).toBe(181)
+    // 180×0.67 + 1×0.50 = 121.1 → ×10,000
+    expect(r.benefit).toBe(1_211_000)
+    expect(r.exemptMonths).toBe(6)
+  })
+
+  it('令和7（2025）分: 11・12月の61日のみ。全て通算180日以内で67%', () => {
+    const r = computeChildcareLeave(crossYear, cfg, 2025)
+    expect(r.leaveDays).toBe(61) // 11月30＋12月31
+    expect(r.benefit).toBe(408_700) // 10,000×61×0.67
+    expect(r.exemptMonths).toBe(2) // 11・12月の月末が育休
+    expect(r.salaryReduction).toBe(610_000) // 30万×61/30
+  })
+
+  it('令和8（2026）分: 1〜4月の120日。前年61日があるので通算で一部が50%', () => {
+    const r = computeChildcareLeave(crossYear, cfg, 2026)
+    expect(r.leaveDays).toBe(120) // 1〜4月
+    // 前年61日 → 当年は通算62〜181日目。67%は180日目まで＝当年119日、50%が1日
+    expect(r.benefit).toBe(802_300) // 10,000×(119×0.67 + 1×0.50)
+    expect(r.exemptMonths).toBe(4) // 1〜4月
+    expect(r.salaryReduction).toBe(1_200_000) // 30万×120/30
+  })
+
+  it('出生後支援は当年に入る28日分のみ（前年で使い切れば翌年は0）', () => {
+    const withSupport = { ...crossYear, postBirthSupport: true }
+    expect(computeChildcareLeave(withSupport, cfg, 2025).postBirthBenefit).toBe(36_400) // 28日×10,000×13%
+    expect(computeChildcareLeave(withSupport, cfg, 2026).postBirthBenefit).toBe(0) // 前年で28日消化
+  })
+
+  it('税年度ごとに手取りへ正しく反映される（統合）', () => {
+    const base = { salaryIncome: 3_600_000, age: 30, childcareLeave: crossYear } as const
+    const y2025 = calculateTakeHome({ ...base, taxYear: 2025 })
+    expect(y2025.childcareLeave?.leaveDays).toBe(61)
+    expect(y2025.childcareLeave?.total).toBe(408_700)
+    expect(y2025.grossIncome).toBe(3_600_000 - 610_000) // 課税給与は61日分だけ減
+    const y2026 = calculateTakeHome({ ...base, taxYear: 2026 })
+    expect(y2026.childcareLeave?.leaveDays).toBe(120)
+    expect(y2026.grossIncome).toBe(3_600_000 - 1_200_000)
+  })
+})
+
 describe('育休が手取りに反映される（統合）', () => {
   it('給付金（非課税）を手取りに加算し、社保は免除月を除く', () => {
     const r = calculateTakeHome({

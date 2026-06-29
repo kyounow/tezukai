@@ -133,7 +133,7 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   // 育児休業: 給与減・育休給付金（非課税）・社保免除月数を算出（給与所得者のみ）。
   const childcare =
     mode === 'employee' && input.childcareLeave && table.childcareLeaveBenefit
-      ? computeChildcareLeave(input.childcareLeave, table.childcareLeaveBenefit)
+      ? computeChildcareLeave(input.childcareLeave, table.childcareLeaveBenefit, table.year)
       : undefined
   // 課税給与収入は育休日数ぶん減額。育休給付金は非課税で後段で手取りに加算。
   const salaryIncome = childcare ? Math.max(0, rawSalary - childcare.salaryReduction) : rawSalary

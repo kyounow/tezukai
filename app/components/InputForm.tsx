@@ -320,6 +320,16 @@ export function InputForm({ form, onChange }: Props) {
           >
             ＋ 育休期間を追加（分割育休）
           </button>
+          {form.childcareLeavePeriods.some(
+            (p) =>
+              (p.start && p.start.slice(0, 4) !== String(form.taxYear)) ||
+              (p.end && p.end.slice(0, 4) !== String(form.taxYear)),
+          ) && (
+            <p className="field__note field__note--warn" role="alert">
+              育休期間に{eraLabel(form.taxYear)}以外の日付が含まれます。本ツールは選択中の年（{eraLabel(form.taxYear)}）の
+              育休日数のみを当年分として計算します。年をまたぐ育休は年度を切り替えて各年を確認してください。
+            </p>
+          )}
           <div className="field">
             <label className="field__label" htmlFor="childcare-presalary">
               育休前の月給

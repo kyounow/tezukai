@@ -11,10 +11,14 @@ import type { ChildcareLeaveInput } from './types'
  * - いずれも非課税・社会保険料の算定対象外。
  * - 社会保険料免除月数 = 全期間の和集合で「月末が育休中」または「同一月に14日以上育休」の暦月数（令和4.10〜）。
  * - 給与減（課税）は月給×通算育休日数/30 の日割り近似。
+ *
+ * 年またぎ: 第3引数 year を渡すと、その暦年内の育休日数のみを当年分として計算する（税は暦年課税のため）。
+ * 給付率67%/50%は育休開始からの通算で判定するので、前年までの育休日数（priorDays）を踏まえて当年分の率を決める。
+ * year 省略時は全期間を1年として扱う（後方互換）。年をまたぐ育休は税年度を切り替えて各年を確認する。
  * 出典: 厚労省「育児休業等給付について」、日本年金機構（保険料免除）。
  */
 export interface ChildcareLeaveResult {
-  /** 育休日数（暦日・両端含む・全期間の通算）。 */
+  /** 育休日数（暦日・両端含む。year指定時は当年内の通算日数）。 */
   leaveDays: number
   /** 社会保険料が免除される月数。 */
   exemptMonths: number
@@ -119,6 +123,7 @@ function countExemptMonths(intervals: Interval[]): number {
 export function computeChildcareLeave(
   input: ChildcareLeaveInput,
   cfg: ChildcareLeaveBenefitConfig | undefined = getTaxTable().childcareLeaveBenefit,
+  year?: number,
 ): ChildcareLeaveResult {
   if (!cfg) return EMPTY
   const monthly = Math.max(0, Math.floor(input.preMonthlySalary))
@@ -130,23 +135,39 @@ export function computeChildcareLeave(
 
   // 重なりをマージして和集合に（分割で同じ日を二重に数えない）。
   const merged = mergeIntervals(parsed)
-  const leaveDays = merged.reduce((sum, iv) => sum + inclusiveDays(iv.start, iv.end), 0)
+
+  // 対象年度で区間をクリップ（税は暦年課税のため当年の暦日のみ計算）。year未指定なら全期間（後方互換）。
+  const yearStart = year != null ? Date.UTC(year, 0, 1) : -Infinity
+  const yearEnd = year != null ? Date.UTC(year, 11, 31) : Infinity
+  let priorDays = 0 // 当年より前の育休日数（給付率67%/50%の通算判定に使う）。
+  const clipped: Interval[] = []
+  for (const iv of merged) {
+    if (year != null) {
+      const beforeEnd = Math.min(iv.end.getTime(), yearStart - DAY_MS)
+      if (beforeEnd >= iv.start.getTime()) priorDays += Math.floor((beforeEnd - iv.start.getTime()) / DAY_MS) + 1
+    }
+    const cS = Math.max(iv.start.getTime(), yearStart)
+    const cE = Math.min(iv.end.getTime(), yearEnd)
+    if (cE >= cS) clipped.push({ start: new Date(cS), end: new Date(cE) })
+  }
+  const leaveDays = clipped.reduce((sum, iv) => sum + inclusiveDays(iv.start, iv.end), 0)
   if (leaveDays <= 0) return EMPTY
 
   // 賃金日額＝月給/30（上限あり）。
   const dailyWage = Math.min(Math.round(monthly / 30), cfg.dailyWageCap)
 
-  // 育児休業給付金: 通算180日まで67%、以降50%。
-  const earlyDays = Math.min(leaveDays, cfg.earlyDays)
-  const lateDays = Math.max(0, leaveDays - cfg.earlyDays)
+  // 育児休業給付金: 育休開始からの通算で180日まで67%、以降50%。当年の日は通算 priorDays+1〜priorDays+leaveDays。
+  const earlyDays = Math.min(leaveDays, Math.max(0, cfg.earlyDays - priorDays))
+  const lateDays = leaveDays - earlyDays
   const benefit = Math.floor(dailyWage * (earlyDays * cfg.earlyRate + lateDays * cfg.lateRate))
 
-  // 出生後休業支援給付金: min(通算育休日数,28)×賃金日額×13%。
-  const postBirthBenefit = input.postBirthSupport
-    ? Math.floor(Math.min(leaveDays, cfg.postBirthMaxDays) * dailyWage * cfg.postBirthRate)
+  // 出生後休業支援給付金: 通算28日のうち当年に入る分 ×賃金日額×13%。
+  const postBirthDays = input.postBirthSupport
+    ? Math.min(leaveDays, Math.max(0, cfg.postBirthMaxDays - priorDays))
     : 0
+  const postBirthBenefit = Math.floor(postBirthDays * dailyWage * cfg.postBirthRate)
 
-  const exemptMonths = countExemptMonths(merged)
+  const exemptMonths = countExemptMonths(clipped)
   const salaryReduction = Math.floor((monthly * leaveDays) / 30)
 
   return {
@@ -156,6 +177,6 @@ export function computeChildcareLeave(
     postBirthBenefit,
     total: benefit + postBirthBenefit,
     salaryReduction,
-    periodCount: merged.length,
+    periodCount: clipped.length,
   }
 }
