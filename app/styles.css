@@ -135,6 +135,36 @@ body {
   color: var(--warn);
   font-weight: 600;
 }
+/* 育休の分割期間グループと追加/削除ボタン */
+.childcare-period {
+  padding: 0.4rem 0 0.4rem 0.75rem;
+  border-left: 2px solid var(--border);
+  margin-bottom: 0.4rem;
+}
+.childcare-period__remove {
+  background: none;
+  border: 0;
+  color: var(--warn);
+  font-size: 0.78rem;
+  padding: 0.15rem 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.childcare-add {
+  display: inline-block;
+  margin: 0.1rem 0 0.6rem;
+  padding: 0.35rem 0.8rem;
+  background: none;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.childcare-add:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
 .field__range {
   width: 100%;
   accent-color: var(--accent);

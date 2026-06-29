@@ -170,15 +170,23 @@ export interface BusinessInput {
   blueDeduction?: BlueDeduction
 }
 
-/**
- * 育児休業（育休）の入力。給与所得者モード専用。
- * 育休中は給与が減り、育児休業給付金（非課税）を受け、社会保険料が免除される。
- */
-export interface ChildcareLeaveInput {
+/** 育児休業の1期間（分割育休に対応するため期間は配列で持つ）。 */
+export interface ChildcareLeavePeriod {
   /** 育休開始日（YYYY-MM-DD）。 */
   startDate: string
   /** 育休終了日（YYYY-MM-DD・当日含む）。 */
   endDate: string
+}
+
+/**
+ * 育児休業（育休）の入力。給与所得者モード専用。
+ * 育休中は給与が減り、育児休業給付金（非課税）を受け、社会保険料が免除される。
+ * 分割育休（複数回に分けて取得）に対応するため periods は配列。給付率67%/50%は
+ * 全期間を通算した育休日数で判定し、社保免除は全期間の和集合で月判定する。
+ */
+export interface ChildcareLeaveInput {
+  /** 育休期間（1つ以上。分割育休は複数）。 */
+  periods: ChildcareLeavePeriod[]
   /** 育休前の月給（賃金日額・給与減の基礎・円）。 */
   preMonthlySalary: number
   /** 出生後休業支援給付金（両親とも14日以上育休で13%上乗せ）を受けるか。 */
@@ -351,8 +359,10 @@ export interface TakeHomeResult {
     total: number
     /** 社会保険料が免除された月数。 */
     exemptMonths: number
-    /** 育休日数（暦日）。 */
+    /** 育休日数（暦日・全期間の通算）。 */
     leaveDays: number
+    /** 育休の期間数（分割育休なら2以上）。 */
+    periodCount: number
   }
   /** 公租公課の合計（所得税＋住民税＋社会保険料）。 */
   totalBurden: number

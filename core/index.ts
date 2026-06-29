@@ -57,6 +57,7 @@ export type {
   BusinessInput,
   HealthInsuranceInput,
   ChildcareLeaveInput,
+  ChildcareLeavePeriod,
 } from './types'
 
 // 年度別ルールセット（法改正対応）のレジストリを UI 向けに再エクスポート。

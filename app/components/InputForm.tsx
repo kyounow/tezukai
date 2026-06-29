@@ -274,31 +274,52 @@ export function InputForm({ form, onChange }: Props) {
         <>
           <p className="field__note">
             育休中は給与が減り、<strong>育児休業給付金（非課税）</strong>を受け、健康保険・厚生年金・介護保険料が<strong>免除</strong>されます。
-            住民税は当年所得に対する翌年度分として試算します（育休年に実際に納める分は前年所得ベースで下がりません）。日割り・賃金日額は概算です。
+            住民税は当年所得に対する翌年度分として試算します（育休年に実際に納める分は前年所得ベースで下がりません）。
+            分割育休は「期間を追加」で複数登録でき、給付率（67%/50%）は通算日数で判定します。日割り・賃金日額は概算です。
           </p>
-          <label className="selectfield">
-            <span>育休 開始日</span>
-            <input
-              className="field__select"
-              type="date"
-              value={form.childcareLeaveStart}
-              onChange={(e) => onChange({ childcareLeaveStart: e.target.value })}
-            />
-          </label>
-          <label className="selectfield">
-            <span>育休 終了日</span>
-            <input
-              className="field__select"
-              type="date"
-              value={form.childcareLeaveEnd}
-              onChange={(e) => onChange({ childcareLeaveEnd: e.target.value })}
-            />
-          </label>
-          {form.childcareLeaveStart && form.childcareLeaveEnd && form.childcareLeaveEnd < form.childcareLeaveStart && (
-            <p className="field__note field__note--warn" role="alert">
-              育休の終了日は開始日以降の日付にしてください（給付金が計算されません）。
-            </p>
-          )}
+          {form.childcareLeavePeriods.map((p, i) => {
+            const update = (patch: { start?: string; end?: string }) =>
+              onChange({
+                childcareLeavePeriods: form.childcareLeavePeriods.map((q, idx) => (idx === i ? { ...q, ...patch } : q)),
+              })
+            const seq = form.childcareLeavePeriods.length > 1 ? `（${i + 1}回目）` : ''
+            const invalid = p.start && p.end && p.end < p.start
+            return (
+              <div className="childcare-period" key={i}>
+                <label className="selectfield">
+                  <span>育休 開始日{seq}</span>
+                  <input className="field__select" type="date" value={p.start} onChange={(e) => update({ start: e.target.value })} />
+                </label>
+                <label className="selectfield">
+                  <span>育休 終了日{seq}</span>
+                  <input className="field__select" type="date" value={p.end} onChange={(e) => update({ end: e.target.value })} />
+                </label>
+                {invalid && (
+                  <p className="field__note field__note--warn" role="alert">
+                    育休の終了日は開始日以降の日付にしてください（この期間は計算されません）。
+                  </p>
+                )}
+                {form.childcareLeavePeriods.length > 1 && (
+                  <button
+                    type="button"
+                    className="childcare-period__remove"
+                    onClick={() =>
+                      onChange({ childcareLeavePeriods: form.childcareLeavePeriods.filter((_, idx) => idx !== i) })
+                    }
+                  >
+                    この期間を削除
+                  </button>
+                )}
+              </div>
+            )
+          })}
+          <button
+            type="button"
+            className="childcare-add"
+            onClick={() => onChange({ childcareLeavePeriods: [...form.childcareLeavePeriods, { start: '', end: '' }] })}
+          >
+            ＋ 育休期間を追加（分割育休）
+          </button>
           <div className="field">
             <label className="field__label" htmlFor="childcare-presalary">
               育休前の月給

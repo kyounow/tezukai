@@ -3,17 +3,18 @@ import { getTaxTable } from '@data/taxTables/index'
 import type { ChildcareLeaveInput } from './types'
 
 /**
- * 育児休業（育休）の計算。給与所得者が育休を取得した年の概算に使う。
+ * 育児休業（育休）の計算。給与所得者が育休を取得した年の概算に使う。分割育休（複数期間）に対応。
  *
- * - 育児休業給付金 = 賃金日額 ×（180日まで67% ＋ 181日〜50%）。賃金日額は月給/30（上限あり）で近似。
- * - 出生後休業支援給付金 = 賃金日額 × min(育休日数, 28) × 13%（両親とも14日以上育休時）。
+ * - 育児休業給付金 = 賃金日額 ×（通算180日まで67% ＋ 181日〜50%）。賃金日額は月給/30（上限あり）で近似。
+ *   給付率の67%/50%は分割しても育休開始からの通算日数で判定する。
+ * - 出生後休業支援給付金 = 賃金日額 × min(通算育休日数, 28) × 13%（両親とも14日以上育休時）。
  * - いずれも非課税・社会保険料の算定対象外。
- * - 社会保険料免除月数 = 育休期間で「月末が育休中」または「同一月に14日以上育休」の暦月数（令和4.10〜）。
- * - 給与減（課税）は月給×育休日数/30 の日割り近似。
+ * - 社会保険料免除月数 = 全期間の和集合で「月末が育休中」または「同一月に14日以上育休」の暦月数（令和4.10〜）。
+ * - 給与減（課税）は月給×通算育休日数/30 の日割り近似。
  * 出典: 厚労省「育児休業等給付について」、日本年金機構（保険料免除）。
  */
 export interface ChildcareLeaveResult {
-  /** 育休日数（暦日・両端含む）。 */
+  /** 育休日数（暦日・両端含む・全期間の通算）。 */
   leaveDays: number
   /** 社会保険料が免除される月数。 */
   exemptMonths: number
@@ -23,8 +24,15 @@ export interface ChildcareLeaveResult {
   postBirthBenefit: number
   /** 非課税給付金の合計。 */
   total: number
-  /** 課税給与の減額（月給×育休日数/30）。 */
+  /** 課税給与の減額（月給×通算育休日数/30）。 */
   salaryReduction: number
+  /** 育休の期間数（分割育休なら2以上）。 */
+  periodCount: number
+}
+
+interface Interval {
+  start: Date
+  end: Date
 }
 
 const DAY_MS = 86_400_000
@@ -35,6 +43,7 @@ const EMPTY: ChildcareLeaveResult = {
   postBirthBenefit: 0,
   total: 0,
   salaryReduction: 0,
+  periodCount: 0,
 }
 
 // 日付計算はすべて UTC で行う（夏時間のある地域でも getTime 差分が暦日数とずれないようにするため）。
@@ -52,20 +61,52 @@ function parseDate(s: string): Date | null {
   return date
 }
 
-/** 育休期間で社会保険料が免除される暦月数を数える（月末育休 or 月内14日以上）。 */
-function countExemptMonths(start: Date, end: Date): number {
+/** 両端含む暦日数。 */
+function inclusiveDays(start: Date, end: Date): number {
+  return Math.floor((end.getTime() - start.getTime()) / DAY_MS) + 1
+}
+
+/** 期間を開始日順にソートし、重なる区間をマージ（和集合）して返す。日数の二重計上を防ぐ。 */
+function mergeIntervals(intervals: Interval[]): Interval[] {
+  const sorted = [...intervals].sort((a, b) => a.start.getTime() - b.start.getTime())
+  const out: Interval[] = []
+  for (const iv of sorted) {
+    const last = out[out.length - 1]
+    // 重なる場合のみマージ（隣接＝翌日開始は別期間として残す＝分割回数を保つ）。
+    if (last && iv.start.getTime() <= last.end.getTime()) {
+      if (iv.end.getTime() > last.end.getTime()) last.end = iv.end
+    } else {
+      out.push({ start: iv.start, end: iv.end })
+    }
+  }
+  return out
+}
+
+/** 全期間（重なりマージ済み）の和集合で社会保険料免除月数を数える（月末育休 or 月内14日以上）。 */
+function countExemptMonths(intervals: Interval[]): number {
+  if (intervals.length === 0) return 0
+  const minStart = Math.min(...intervals.map((iv) => iv.start.getTime()))
+  const maxEnd = Math.max(...intervals.map((iv) => iv.end.getTime()))
+  const first = new Date(minStart)
+  const last = new Date(maxEnd)
+  let y = first.getUTCFullYear()
+  let m = first.getUTCMonth() // 0-based
+  const endY = last.getUTCFullYear()
+  const endM = last.getUTCMonth()
   let count = 0
-  let y = start.getUTCFullYear()
-  let m = start.getUTCMonth() // 0-based
-  const endY = end.getUTCFullYear()
-  const endM = end.getUTCMonth()
   while (y < endY || (y === endY && m <= endM)) {
+    const monthStart = Date.UTC(y, m, 1)
     const monthEnd = new Date(Date.UTC(y, m + 1, 0)) // その月の末日
-    const overlapStart = Math.max(start.getTime(), Date.UTC(y, m, 1))
-    const overlapEnd = Math.min(end.getTime(), monthEnd.getTime())
-    const overlapDays = overlapEnd >= overlapStart ? Math.floor((overlapEnd - overlapStart) / DAY_MS) + 1 : 0
-    const monthEndInLeave = monthEnd.getTime() >= start.getTime() && monthEnd.getTime() <= end.getTime()
-    if (monthEndInLeave || overlapDays >= 14) count++
+    // マージ済みなので同一月内の区間は重ならず、月内の育休日数は単純に合算してよい。
+    let unionDays = 0
+    let monthEndInLeave = false
+    for (const iv of intervals) {
+      const oS = Math.max(iv.start.getTime(), monthStart)
+      const oE = Math.min(iv.end.getTime(), monthEnd.getTime())
+      if (oE >= oS) unionDays += Math.floor((oE - oS) / DAY_MS) + 1
+      if (monthEnd.getTime() >= iv.start.getTime() && monthEnd.getTime() <= iv.end.getTime()) monthEndInLeave = true
+    }
+    if (monthEndInLeave || unionDays >= 14) count++
     m++
     if (m > 11) {
       m = 0
@@ -80,27 +121,32 @@ export function computeChildcareLeave(
   cfg: ChildcareLeaveBenefitConfig | undefined = getTaxTable().childcareLeaveBenefit,
 ): ChildcareLeaveResult {
   if (!cfg) return EMPTY
-  const start = parseDate(input.startDate)
-  const end = parseDate(input.endDate)
   const monthly = Math.max(0, Math.floor(input.preMonthlySalary))
-  if (!start || !end || monthly <= 0) return EMPTY
-  const leaveDays = Math.floor((end.getTime() - start.getTime()) / DAY_MS) + 1
+  // 各期間をパースし、不正（日付不正・終了<開始）を除外。
+  const parsed: Interval[] = (input.periods ?? [])
+    .map((p) => ({ start: parseDate(p.startDate), end: parseDate(p.endDate) }))
+    .filter((p): p is Interval => p.start !== null && p.end !== null && p.end.getTime() >= p.start.getTime())
+  if (monthly <= 0 || parsed.length === 0) return EMPTY
+
+  // 重なりをマージして和集合に（分割で同じ日を二重に数えない）。
+  const merged = mergeIntervals(parsed)
+  const leaveDays = merged.reduce((sum, iv) => sum + inclusiveDays(iv.start, iv.end), 0)
   if (leaveDays <= 0) return EMPTY
 
   // 賃金日額＝月給/30（上限あり）。
   const dailyWage = Math.min(Math.round(monthly / 30), cfg.dailyWageCap)
 
-  // 育児休業給付金: 180日まで67%、以降50%。
+  // 育児休業給付金: 通算180日まで67%、以降50%。
   const earlyDays = Math.min(leaveDays, cfg.earlyDays)
   const lateDays = Math.max(0, leaveDays - cfg.earlyDays)
   const benefit = Math.floor(dailyWage * (earlyDays * cfg.earlyRate + lateDays * cfg.lateRate))
 
-  // 出生後休業支援給付金: min(育休日数,28)×賃金日額×13%。
+  // 出生後休業支援給付金: min(通算育休日数,28)×賃金日額×13%。
   const postBirthBenefit = input.postBirthSupport
     ? Math.floor(Math.min(leaveDays, cfg.postBirthMaxDays) * dailyWage * cfg.postBirthRate)
     : 0
 
-  const exemptMonths = countExemptMonths(start, end)
+  const exemptMonths = countExemptMonths(merged)
   const salaryReduction = Math.floor((monthly * leaveDays) / 30)
 
   return {
@@ -110,5 +156,6 @@ export function computeChildcareLeave(
     postBirthBenefit,
     total: benefit + postBirthBenefit,
     salaryReduction,
+    periodCount: merged.length,
   }
 }

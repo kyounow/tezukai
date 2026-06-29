@@ -37,10 +37,8 @@ export interface FormState {
   // ── 育児休業（給与所得者モード） ──
   /** 育児休業を取得する。 */
   childcareLeave: boolean
-  /** 育休開始日（YYYY-MM-DD）。 */
-  childcareLeaveStart: string
-  /** 育休終了日（YYYY-MM-DD）。 */
-  childcareLeaveEnd: string
+  /** 育休期間（分割育休は複数）。各 start/end は YYYY-MM-DD。 */
+  childcareLeavePeriods: { start: string; end: string }[]
   /** 育休前の月給（賃金日額・給与減の基礎・円）。 */
   childcareLeavePreSalary: number
   /** 出生後休業支援給付金（両親とも14日以上育休）。 */
@@ -143,8 +141,7 @@ export const defaultForm: FormState = {
   kumiaiCareRatePct: 0.77,
   kumiaiChildSupportRatePct: 0.115,
   childcareLeave: false,
-  childcareLeaveStart: '',
-  childcareLeaveEnd: '',
+  childcareLeavePeriods: [{ start: '', end: '' }],
   childcareLeavePreSalary: 300_000,
   childcarePostBirthSupport: false,
   childcareExemptBonus: false,
@@ -236,10 +233,11 @@ export function toInput(f: FormState): TakeHomeInput {
         }
       : undefined,
     childcareLeave:
-      !sole && f.childcareLeave && f.childcareLeaveStart && f.childcareLeaveEnd
+      !sole && f.childcareLeave && f.childcareLeavePeriods.some((p) => p.start && p.end)
         ? {
-            startDate: f.childcareLeaveStart,
-            endDate: f.childcareLeaveEnd,
+            periods: f.childcareLeavePeriods
+              .filter((p) => p.start && p.end)
+              .map((p) => ({ startDate: p.start, endDate: p.end })),
             preMonthlySalary: f.childcareLeavePreSalary,
             postBirthSupport: f.childcarePostBirthSupport,
             exemptBonus: f.childcareExemptBonus,

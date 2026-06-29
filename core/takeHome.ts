@@ -236,6 +236,7 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
             total: childcare.total,
             exemptMonths: childcare.exemptMonths,
             leaveDays: childcare.leaveDays,
+            periodCount: childcare.periodCount,
           }
         : undefined,
     totalBurden,

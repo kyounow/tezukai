@@ -110,7 +110,10 @@ export function ResultView({ result: r }: Props) {
 
       {r.childcareLeave && (
         <p className="result__note">
-          育児休業給付金（非課税）{yen(r.childcareLeave.total)} を手取りに加算。育休 {r.childcareLeave.leaveDays}日で
+          育児休業給付金（非課税）{yen(r.childcareLeave.total)} を手取りに加算。育休
+          {r.childcareLeave.periodCount > 1
+            ? ` 通算${r.childcareLeave.leaveDays}日（${r.childcareLeave.periodCount}回に分割）で`
+            : ` ${r.childcareLeave.leaveDays}日で`}
           社会保険料は<strong>{r.childcareLeave.exemptMonths}か月分が免除</strong>されています。
           この住民税は当年（育休年）の所得に対する<strong>翌年度分</strong>で、育休による所得減を反映して下がります。
           一方、育休年中に実際に納める住民税は前年所得ベースのため下がりません。
@@ -135,7 +138,13 @@ export function ResultView({ result: r }: Props) {
             {r.childcareLeave && (
               <>
                 <SubHeader label="育児休業（非課税給付・社保免除）" />
-                <Row label="育休日数" value={`${r.childcareLeave.leaveDays} 日`} />
+                {r.childcareLeave.periodCount > 1 && (
+                  <Row label="育休の分割回数" value={`${r.childcareLeave.periodCount} 回`} />
+                )}
+                <Row
+                  label={r.childcareLeave.periodCount > 1 ? '育休日数（通算）' : '育休日数'}
+                  value={`${r.childcareLeave.leaveDays} 日`}
+                />
                 <Row label="社会保険料の免除月数" value={`${r.childcareLeave.exemptMonths} か月`} />
                 <Row label="育児休業給付金" value={yen(r.childcareLeave.benefit)} />
                 {r.childcareLeave.postBirthBenefit > 0 && (
