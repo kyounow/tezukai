@@ -119,7 +119,7 @@ export function ResultView({ result: r }: Props) {
             <SubHeader label="所得税" />
             <Row label="所得控除の合計" value={yen(r.incomeTaxDeductions.total)} />
             <Row label="課税所得（1,000円未満切捨て）" value={yen(r.taxableForIncomeTax)} />
-            <Row label={`所得税額（${surtaxNote}）`} value={yen(r.incomeTax)} strong />
+            <Row label={`所得税額（${surtaxNote}）`} value={yen(r.incomeTax)} />
             <SubHeader label="住民税" />
             <Row label="所得控除の合計" value={yen(r.residentTaxDeductions.total)} />
             <Row label="課税標準（1,000円未満切捨て）" value={yen(r.taxableForResidentTax)} />
