@@ -120,8 +120,8 @@ export const defaultForm: FormState = {
   monthlySalary: 300_000,
   annualBonus: 1_000_000,
   bonusCount: 2,
-  // 既定はNTT健康保険組合（令和8年度・本人負担分）の料率。協会けんぽに切替も可。
-  // 出典: NTT健保 公式「R8.4.1～ 保険料・掛金額（一般）本人負担分」
+  // 組合健保の初期値（プリセット）に使う本人負担料率。協会けんぽに切替も可。
+  // 数値の出典: NTT健保 公式「R8.4.1～ 保険料・掛金額（一般）本人負担分」
   //   健保 45.6/1000(4.56%)・介護 7.7/1000(0.77%)・子ども子育て支援金 1.15/1000(0.115%)。
   //   https://www.nttkenpo.jp/member/outline/files/getsugaku.pdf
   healthInsuranceType: 'kumiai',
