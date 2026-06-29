@@ -33,6 +33,20 @@ export interface FormState {
   kumiaiCareRatePct: number
   /** 組合健保の本人負担の子ども・子育て支援金率（%・令和8年度〜）。 */
   kumiaiChildSupportRatePct: number
+
+  // ── 育児休業（給与所得者モード） ──
+  /** 育児休業を取得する。 */
+  childcareLeave: boolean
+  /** 育休開始日（YYYY-MM-DD）。 */
+  childcareLeaveStart: string
+  /** 育休終了日（YYYY-MM-DD）。 */
+  childcareLeaveEnd: string
+  /** 育休前の月給（賃金日額・給与減の基礎・円）。 */
+  childcareLeavePreSalary: number
+  /** 出生後休業支援給付金（両親とも14日以上育休）。 */
+  childcarePostBirthSupport: boolean
+  /** 賞与の社会保険料も免除（賞与月末を含む連続1か月超の育休）。 */
+  childcareExemptBonus: boolean
   /** 本人の年齢。 */
   age: number
   /** 配偶者の有無。 */
@@ -128,6 +142,12 @@ export const defaultForm: FormState = {
   kumiaiHealthRatePct: 4.56,
   kumiaiCareRatePct: 0.77,
   kumiaiChildSupportRatePct: 0.115,
+  childcareLeave: false,
+  childcareLeaveStart: '',
+  childcareLeaveEnd: '',
+  childcareLeavePreSalary: 300_000,
+  childcarePostBirthSupport: false,
+  childcareExemptBonus: false,
   age: 35,
   hasSpouse: false,
   spouseSalaryIncome: 0,
@@ -215,6 +235,16 @@ export function toInput(f: FormState): TakeHomeInput {
           childcareHousehold: f.lifeChildcare,
         }
       : undefined,
+    childcareLeave:
+      !sole && f.childcareLeave && f.childcareLeaveStart && f.childcareLeaveEnd
+        ? {
+            startDate: f.childcareLeaveStart,
+            endDate: f.childcareLeaveEnd,
+            preMonthlySalary: f.childcareLeavePreSalary,
+            postBirthSupport: f.childcarePostBirthSupport,
+            exemptBonus: f.childcareExemptBonus,
+          }
+        : undefined,
     earthquakeInsurance:
       f.earthquakePaid > 0 || f.oldLongTermPaid > 0
         ? { earthquake: f.earthquakePaid, oldLongTerm: f.oldLongTermPaid }

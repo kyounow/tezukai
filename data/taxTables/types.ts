@@ -65,6 +65,25 @@ export interface SocialInsuranceConfig {
   readonly latterStageElderlyAge?: number
 }
 
+/**
+ * 育児休業給付（雇用保険）の制度値。育休手取り計算に使用。非課税・社会保険料の算定対象外。
+ * 出典: 厚労省・ハローワーク。賃金日額上限は毎年8月改定（年度別に差し替え）。
+ */
+export interface ChildcareLeaveBenefitConfig {
+  /** 育休開始から earlyDays 日目までの給付率（67%）。 */
+  readonly earlyRate: number
+  /** earlyDays 日目以降の給付率（50%）。 */
+  readonly lateRate: number
+  /** 高い給付率が適用される日数（180日）。 */
+  readonly earlyDays: number
+  /** 休業開始時賃金日額の上限（円）。 */
+  readonly dailyWageCap: number
+  /** 出生後休業支援給付金の上乗せ率（13%）。 */
+  readonly postBirthRate: number
+  /** 出生後休業支援給付金の対象上限日数（28日）。 */
+  readonly postBirthMaxDays: number
+}
+
 // ── Phase 4: 拡張控除の設定型 ──────────────────────────────
 
 export interface MedicalExpenseConfig {
@@ -222,6 +241,8 @@ export interface TaxTable {
   /** 個人事業主モード（Phase 5）。 */
   readonly nationalPension?: NationalPensionConfig
   readonly nationalHealthInsurance?: NationalHealthInsuranceConfig
+  /** 育児休業給付（雇用保険・育休手取り計算）。その年度に未設定なら育休機能は無効。 */
+  readonly childcareLeaveBenefit?: ChildcareLeaveBenefitConfig
   /** データで表せない式変更のときのみ使用（原則 undefined）。 */
   readonly rulesetVersion?: number
   /** 暫定（工事中）。今後の税制改正で内容が変わり得る年度。UIで明示する。 */

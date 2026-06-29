@@ -9,6 +9,8 @@ export { employmentIncome, employmentIncomeDeduction } from './income/employment
 export { otherIncomeTotal } from './income/otherIncome'
 export { incomeAdjustmentDeduction } from './income/incomeAdjustment'
 export { businessIncome, businessProfit } from './income/businessIncome'
+export { computeChildcareLeave } from './childcareLeave'
+export type { ChildcareLeaveResult } from './childcareLeave'
 export { socialInsurance } from './insurance/socialInsurance'
 export { nationalInsurance } from './insurance/nationalInsurance'
 export { baseIncomeTax, incomeTaxWithSurtax } from './tax/incomeTax'
@@ -54,6 +56,7 @@ export type {
   BlueDeduction,
   BusinessInput,
   HealthInsuranceInput,
+  ChildcareLeaveInput,
 } from './types'
 
 // 年度別ルールセット（法改正対応）のレジストリを UI 向けに再エクスポート。

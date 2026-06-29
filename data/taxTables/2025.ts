@@ -6,6 +6,7 @@
  * すべて円単位。各数値の一次情報は行コメントの URL を参照。
  */
 import type {
+  ChildcareLeaveBenefitConfig,
   EarthquakeInsuranceConfig,
   HousingLoanConfig,
   LifeInsuranceConfig,
@@ -510,6 +511,18 @@ export const NATIONAL_HEALTH_INSURANCE_2025: NationalHealthInsuranceConfig = {
   areaLabel: '東京都特別区',
 }
 
+// 育児休業給付（雇用保険）。180日まで67%・181日〜50%、賃金日額上限16,110円（令和7.8〜令和8.7）、
+// 出生後休業支援給付金13%・最大28日（令和7.4新設）。いずれも非課税・社保算定対象外。
+// 出典: 厚労省「育児休業等給付について」、ハローワーク。
+export const CHILDCARE_LEAVE_BENEFIT_2025: ChildcareLeaveBenefitConfig = {
+  earlyRate: 0.67,
+  lateRate: 0.5,
+  earlyDays: 180,
+  dailyWageCap: 16_110,
+  postBirthRate: 0.13,
+  postBirthMaxDays: 28,
+}
+
 // ─────────────────────────────────────────────────────────────
 // 集約: 令和7年（2025）の TaxTable。レジストリ（index.ts）から参照する。
 // 上の個別定数は出典コメント保持のためそのまま残し、ここで束ねる。
@@ -542,4 +555,5 @@ export const TAX_TABLE_2025: TaxTable = {
   housingLoan: HOUSING_LOAN_2025,
   nationalPension: NATIONAL_PENSION_2025,
   nationalHealthInsurance: NATIONAL_HEALTH_INSURANCE_2025,
+  childcareLeaveBenefit: CHILDCARE_LEAVE_BENEFIT_2025,
 }

@@ -170,6 +170,23 @@ export interface BusinessInput {
   blueDeduction?: BlueDeduction
 }
 
+/**
+ * 育児休業（育休）の入力。給与所得者モード専用。
+ * 育休中は給与が減り、育児休業給付金（非課税）を受け、社会保険料が免除される。
+ */
+export interface ChildcareLeaveInput {
+  /** 育休開始日（YYYY-MM-DD）。 */
+  startDate: string
+  /** 育休終了日（YYYY-MM-DD・当日含む）。 */
+  endDate: string
+  /** 育休前の月給（賃金日額・給与減の基礎・円）。 */
+  preMonthlySalary: number
+  /** 出生後休業支援給付金（両親とも14日以上育休で13%上乗せ）を受けるか。 */
+  postBirthSupport?: boolean
+  /** 賞与の社会保険料も免除（賞与月末を含む連続1か月超の育休）するか。 */
+  exemptBonus?: boolean
+}
+
 /** 手取り計算への入力。 */
 export interface TakeHomeInput {
   /** 対象年度（省略時 2025）。 */
@@ -182,6 +199,8 @@ export interface TakeHomeInput {
   salaryBreakdown?: SalaryBreakdown
   /** 健康保険の種類（省略時は協会けんぽ＝年度テーブルの料率を折半）。 */
   healthInsurance?: HealthInsuranceInput
+  /** 育児休業（給与所得者モードのみ）。給与減・育休給付金・社保免除を反映。 */
+  childcareLeave?: ChildcareLeaveInput
   /** 本人の年齢。介護保険第2号被保険者（40〜64歳）の判定に使用。 */
   age: number
   /** 配偶者（いなければ省略）。 */
@@ -281,9 +300,12 @@ export interface TakeHomeResult {
   taxYear: TaxYear
   /** 納税者区分。 */
   mode: TaxpayerMode
-  /** 給与収入（額面年収）。個人事業主モードでは0。 */
+  /** 給与収入（額面年収。育児休業時は育休日数ぶん減額後）。個人事業主モードでは0。 */
   salaryIncome: number
-  /** 手取り計算の基礎となる総収入（給与＝額面、事業＝収入−必要経費、＋給与以外の所得）。 */
+  /**
+   * 手取り計算の基礎となる就労収入（給与＝額面。育児休業時は育休日数ぶん減額した課税給与）。
+   * 事業＝収入−必要経費、＋給与以外の所得。育休給付金（非課税）は含まず takeHome に別途加算。
+   */
   grossIncome: number
   /** 事業所得（収入−必要経費−青色申告特別控除）。個人事業主モードのみ。 */
   businessIncome: number
@@ -319,8 +341,21 @@ export interface TakeHomeResult {
   housingLoanCredit: HousingLoanCreditBreakdown
   /** 医療費控除を適用した場合の、採用した方法と控除額（控除額が0なら未設定）。 */
   medicalExpense?: { method: MedicalMethod; amount: number }
+  /** 育児休業を取得した場合の給付金（非課税）と社保免除の内訳（未取得なら未設定）。 */
+  childcareLeave?: {
+    /** 育児休業給付金（年額・非課税）。 */
+    benefit: number
+    /** 出生後休業支援給付金（非課税）。 */
+    postBirthBenefit: number
+    /** 非課税給付金の合計（手取りに加算済み）。 */
+    total: number
+    /** 社会保険料が免除された月数。 */
+    exemptMonths: number
+    /** 育休日数（暦日）。 */
+    leaveDays: number
+  }
   /** 公租公課の合計（所得税＋住民税＋社会保険料）。 */
   totalBurden: number
-  /** 手取り（額面年収−公租公課の合計）。 */
+  /** 手取り（額面年収−公租公課の合計。育休時は非課税給付金を加算）。 */
   takeHome: number
 }

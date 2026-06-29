@@ -4,6 +4,7 @@ import { employmentIncome } from './income/employmentIncome'
 import { incomeAdjustmentDeduction } from './income/incomeAdjustment'
 import { otherIncomeTotal } from './income/otherIncome'
 import { businessIncome, businessProfit } from './income/businessIncome'
+import { computeChildcareLeave } from './childcareLeave'
 import { socialInsurance } from './insurance/socialInsurance'
 import { nationalInsurance } from './insurance/nationalInsurance'
 import {
@@ -128,7 +129,14 @@ function nonTaxableDependentCount(input: TakeHomeInput, table: TaxTable): number
 export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const table = getTaxTable(input.taxYear ?? DEFAULT_TAX_YEAR)
   const mode = input.mode ?? 'employee'
-  const salaryIncome = mode === 'employee' ? Math.max(0, Math.floor(input.salaryIncome)) : 0
+  const rawSalary = mode === 'employee' ? Math.max(0, Math.floor(input.salaryIncome)) : 0
+  // 育児休業: 給与減・育休給付金（非課税）・社保免除月数を算出（給与所得者のみ）。
+  const childcare =
+    mode === 'employee' && input.childcareLeave && table.childcareLeaveBenefit
+      ? computeChildcareLeave(input.childcareLeave, table.childcareLeaveBenefit)
+      : undefined
+  // 課税給与収入は育休日数ぶん減額。育休給付金は非課税で後段で手取りに加算。
+  const salaryIncome = childcare ? Math.max(0, rawSalary - childcare.salaryReduction) : rawSalary
 
   // 本業の所得
   const empIncome = mode === 'employee' ? employmentIncome(salaryIncome, table) : 0
@@ -142,9 +150,22 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const totalIncome = Math.max(0, empIncome - incomeAdjust + busIncome + otherTotal)
 
   // 社会保険料（給与＝健保/厚年/雇用、事業＝国民年金＋国保）
+  // 育休時は標準報酬月額を育休前の月給で判定し、免除月（12−免除月数）を除いて課す。
+  const siBreakdown =
+    childcare && input.childcareLeave
+      ? (input.salaryBreakdown ?? { monthlySalary: input.childcareLeave.preMonthlySalary, annualBonus: 0 })
+      : input.salaryBreakdown
   const si =
     mode === 'employee'
-      ? socialInsurance(salaryIncome, input.age, table, input.salaryBreakdown, input.healthInsurance)
+      ? socialInsurance(
+          salaryIncome,
+          input.age,
+          table,
+          siBreakdown,
+          input.healthInsurance,
+          childcare ? 12 - childcare.exemptMonths : 12,
+          childcare ? !!input.childcareLeave?.exemptBonus : false,
+        )
       : nationalInsurance(totalIncome, input.age, input.kokuhoMembers, table)
 
   const incomeTaxDeductions = buildDeductions('incomeTax', totalIncome, si.total, input, table)
@@ -179,7 +200,8 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   const totalBurden = incomeTax + residentTaxTotal + si.total
   // 手取りの基礎: 給与＝額面、事業＝収入−必要経費（青色控除前の現金利益）、＋給与以外の所得
   const grossIncome = (mode === 'employee' ? salaryIncome : busProfit) + otherTotal
-  const takeHome = grossIncome - totalBurden
+  // 育児休業給付金（非課税）は手取りに加算する。
+  const takeHome = grossIncome - totalBurden + (childcare?.total ?? 0)
 
   const medicalDetail = input.medicalExpense ? medicalExpenseDetail(input.medicalExpense, totalIncome, table) : undefined
 
@@ -205,6 +227,16 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
     medicalExpense:
       medicalDetail && medicalDetail.amount > 0
         ? { method: medicalDetail.method, amount: medicalDetail.amount }
+        : undefined,
+    childcareLeave:
+      childcare && childcare.leaveDays > 0
+        ? {
+            benefit: childcare.benefit,
+            postBirthBenefit: childcare.postBirthBenefit,
+            total: childcare.total,
+            exemptMonths: childcare.exemptMonths,
+            leaveDays: childcare.leaveDays,
+          }
         : undefined,
     totalBurden,
     takeHome,

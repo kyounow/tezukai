@@ -26,6 +26,7 @@ import type {
 } from './types'
 import type { AmountByIncomeBand, DeductionBracket } from './2025'
 import {
+  CHILDCARE_LEAVE_BENEFIT_2025,
   EARTHQUAKE_INSURANCE_2025,
   NATIONAL_HEALTH_INSURANCE_2025,
   BASIC_DEDUCTION_RESIDENT_TAX_2025,
@@ -163,4 +164,6 @@ export const TAX_TABLE_2026: TaxTable = {
   housingLoan: HOUSING_LOAN_2026,
   nationalPension: NATIONAL_PENSION_2026,
   nationalHealthInsurance: NATIONAL_HEALTH_INSURANCE_2025,
+  // 育休給付の上限は毎年8月改定。令和8/9の値は未確定のため令和7を流用（要差し替え）。
+  childcareLeaveBenefit: CHILDCARE_LEAVE_BENEFIT_2025,
 }

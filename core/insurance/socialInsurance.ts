@@ -44,6 +44,10 @@ export function socialInsurance(
   table: TaxTable = getTaxTable(),
   breakdown?: SalaryBreakdown,
   healthInsurance?: HealthInsuranceInput,
+  /** 健保・厚年・介護を課す月数（育休の社保免除で 12−免除月数。省略時12）。標準報酬月額は通常の月給で判定。 */
+  chargedMonths: number = 12,
+  /** 賞与の社会保険料を免除するか（賞与月末を含む連続1か月超の育休）。 */
+  exemptBonus: boolean = false,
 ): SocialInsuranceBreakdown {
   if (salaryIncome <= 0) {
     return { health: 0, longTermCare: 0, pension: 0, employment: 0, total: 0 }
@@ -69,13 +73,14 @@ export function socialInsurance(
   const healthStandard = standardRemuneration(monthly, table.healthGrades)
   const pensionStandard = standardRemuneration(monthly, table.pensionGrades)
 
-  // 月額（標準報酬月額ベース）の本人負担×12。
-  let health = isHealthInsured ? roundPremium(healthStandard * healthEmployeeRate) * 12 : 0
-  let longTermCare = isCareInsured ? roundPremium(healthStandard * careEmployeeRate) * 12 : 0
-  let pension = isPensionInsured ? roundPremium(pensionStandard * pensionEmployeeRate) * 12 : 0
+  // 月額（標準報酬月額ベース）の本人負担×課す月数（育休免除月は除く・省略時12）。
+  const months = Math.max(0, Math.min(12, chargedMonths))
+  let health = isHealthInsured ? roundPremium(healthStandard * healthEmployeeRate) * months : 0
+  let longTermCare = isCareInsured ? roundPremium(healthStandard * careEmployeeRate) * months : 0
+  let pension = isPensionInsured ? roundPremium(pensionStandard * pensionEmployeeRate) * months : 0
 
-  // 賞与分離モード: 標準賞与額（1000円未満切捨て）に上限を適用して別計算。
-  if (breakdown) {
+  // 賞与分離モード: 標準賞与額（1000円未満切捨て）に上限を適用して別計算（育休で免除なら課さない）。
+  if (breakdown && !exemptBonus) {
     const stdBonus = floorTo1000(Math.max(0, breakdown.annualBonus))
     const bonusCount = breakdown.bonusCount ?? 2
     const healthBonusBase = Math.min(stdBonus, HEALTH_BONUS_ANNUAL_CAP)

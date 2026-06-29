@@ -263,6 +263,81 @@ export function InputForm({ form, onChange }: Props) {
         </>
       )}
 
+      {/* 育児休業 */}
+      <div className="field">
+        <label className="field__check field__check--small">
+          <input type="checkbox" checked={form.childcareLeave} onChange={(e) => onChange({ childcareLeave: e.target.checked })} />
+          この年に育児休業を取得する
+        </label>
+      </div>
+      {form.childcareLeave && (
+        <>
+          <p className="field__note">
+            育休中は給与が減り、<strong>育児休業給付金（非課税）</strong>を受け、健康保険・厚生年金・介護保険料が<strong>免除</strong>されます。
+            住民税は当年所得に対する翌年度分として試算します（育休年に実際に納める分は前年所得ベースで下がりません）。日割り・賃金日額は概算です。
+          </p>
+          <label className="selectfield">
+            <span>育休 開始日</span>
+            <input
+              className="field__select"
+              type="date"
+              value={form.childcareLeaveStart}
+              onChange={(e) => onChange({ childcareLeaveStart: e.target.value })}
+            />
+          </label>
+          <label className="selectfield">
+            <span>育休 終了日</span>
+            <input
+              className="field__select"
+              type="date"
+              value={form.childcareLeaveEnd}
+              onChange={(e) => onChange({ childcareLeaveEnd: e.target.value })}
+            />
+          </label>
+          {form.childcareLeaveStart && form.childcareLeaveEnd && form.childcareLeaveEnd < form.childcareLeaveStart && (
+            <p className="field__note field__note--warn" role="alert">
+              育休の終了日は開始日以降の日付にしてください（給付金が計算されません）。
+            </p>
+          )}
+          <div className="field">
+            <label className="field__label" htmlFor="childcare-presalary">
+              育休前の月給
+            </label>
+            <div className="field__inline">
+              <NumberInput
+                className="field__number"
+                ariaLabel="育休前の月給"
+                value={form.childcareLeavePreSalary}
+                max={3_000_000}
+                onChange={(v) => onChange({ childcareLeavePreSalary: v })}
+              />
+              <span className="field__unit">円</span>
+            </div>
+            {form.childcareLeavePreSalary <= 0 && (
+              <p className="field__note field__note--warn" role="alert">
+                育休前の月給を入力してください（0のままだと育児休業給付金が計算されません）。
+              </p>
+            )}
+          </div>
+          <label className="field__check field__check--small">
+            <input
+              type="checkbox"
+              checked={form.childcarePostBirthSupport}
+              onChange={(e) => onChange({ childcarePostBirthSupport: e.target.checked })}
+            />
+            出生後休業支援給付金（両親とも14日以上育休・13%上乗せ・最大28日）
+          </label>
+          <label className="field__check field__check--small">
+            <input
+              type="checkbox"
+              checked={form.childcareExemptBonus}
+              onChange={(e) => onChange({ childcareExemptBonus: e.target.checked })}
+            />
+            賞与の社会保険料も免除（賞与月末を含む連続1か月超の育休）
+          </label>
+        </>
+      )}
+
         </>
       )}
 
