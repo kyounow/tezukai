@@ -263,6 +263,8 @@ function applyHousingLoanCredit(
   if (available <= 0) return empty
 
   const appliedToIncomeTax = Math.min(available, Math.max(0, baseTax))
+  // 住民税からの控除上限＝「所得税の課税総所得金額等（＝所得控除後の課税所得）×5%」と97,500円の小さい方。
+  // 合計所得（totalIncome）ではない点に注意（国税庁 No.1211-1・令和4年以降入居）。
   const carryoverCap = Math.min(
     table.housingLoan.residentCarryover.cap,
     Math.floor(taxableForIncomeTax * table.housingLoan.residentCarryover.rate),

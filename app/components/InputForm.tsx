@@ -203,7 +203,7 @@ export function InputForm({ form, onChange }: Props) {
             </div>
           </div>
           <div className="field__inline">
-            <NumberInput className="field__number" ariaLabel="額面年収（数値入力）" value={form.salaryIncome} max={SALARY_MAX} onChange={(v) => onChange({ salaryIncome: v })} />
+            <NumberInput id="salary-number" className="field__number" ariaLabel="額面年収（数値入力）" value={form.salaryIncome} max={SALARY_MAX} onChange={(v) => onChange({ salaryIncome: v })} />
             <span className="field__unit">円</span>
           </div>
         </div>
@@ -479,9 +479,10 @@ export function InputForm({ form, onChange }: Props) {
       {/* 住民税の自治体差（任意） */}
       <fieldset className="field">
         <legend className="field__label">住民税の自治体差（任意）</legend>
-        <label className="selectfield">
+        <label className="selectfield" htmlFor="resident-grade">
           <span>級地区分（非課税限度額）</span>
           <select
+            id="resident-grade"
             className="field__select"
             value={form.residentGradeLevel}
             onChange={(e) => onChange({ residentGradeLevel: Number(e.target.value) as 1 | 2 | 3 })}
@@ -491,10 +492,11 @@ export function InputForm({ form, onChange }: Props) {
             <option value={3}>3級地（町村など）</option>
           </select>
         </label>
-        <label className="selectfield">
+        <label className="selectfield" htmlFor="resident-percapita">
           <span>均等割（市区町村＋都道府県・森林環境税を除く）</span>
           <span className="field__inline">
             <input
+              id="resident-percapita"
               className="field__number field__number--narrow"
               type="number"
               min={0}

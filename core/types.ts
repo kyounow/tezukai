@@ -84,7 +84,7 @@ export interface EarthquakeInsuranceInput {
 
 /** 住宅ローン控除の入力。借入限度額は入居年×取得区分×住宅性能で決まる。 */
 export interface HousingLoanInput {
-  /** 居住開始年（西暦。現行制度は2022〜2025）。 */
+  /** 居住開始年（西暦。現行制度の借入限度データは2022〜2026、税年度データにより異なる）。 */
   moveInYear: number
   /** 新築・買取再販 / 中古。 */
   construction: HousingConstruction

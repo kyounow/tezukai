@@ -36,10 +36,11 @@ export function App() {
       )}
 
       <div className="app__grid">
-        <div className="app__col">
+        {/* 送信のないフォーム（Enter での送信は抑止）。入力領域をフォームランドマークとして明示する。 */}
+        <form className="app__col" aria-label="収入と控除の入力" onSubmit={(e) => e.preventDefault()}>
           <InputForm form={form} onChange={onChange} />
           <ExtraDeductionsForm form={form} onChange={onChange} />
-        </div>
+        </form>
         <ResultView result={result} />
       </div>
 

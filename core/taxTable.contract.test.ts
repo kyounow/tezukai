@@ -112,4 +112,140 @@ describe.each(Object.entries(TAX_TABLES))('TaxTable 契約: %s', (key, table: Ta
     assertGrades(table.healthGrades)
     assertGrades(table.pensionGrades)
   })
+
+  it('住民税 非課税限度額: 全フィールドが正の数', () => {
+    const nt = table.residentTaxNonTaxable
+    expect(nt.perPerson).toBeGreaterThan(0)
+    expect(nt.base).toBeGreaterThan(0)
+    expect(nt.perCapitaAddition).toBeGreaterThan(0)
+    expect(nt.incomePortionAddition).toBeGreaterThan(0)
+  })
+
+  it('調整控除の人的控除差: 全8フィールドが正の数（欠落や0は調整控除を静かに壊す）', () => {
+    const d = table.humanDeductionDiff
+    for (const key of [
+      'basic',
+      'spouseGeneral',
+      'spouseElderly',
+      'spouseSpecial',
+      'dependentGeneral',
+      'dependentSpecified',
+      'dependentElderlyOther',
+      'dependentCoLiving',
+    ] as const) {
+      expect(d[key], `humanDeductionDiff.${key}`).toBeGreaterThan(0)
+    }
+  })
+
+  it('扶養控除テーブル: 一般・特定・老人（同居/別居）が所得税・住民税とも正の数', () => {
+    for (const kind of ['incomeTax', 'residentTax'] as const) {
+      const t = table.dependentDeduction[kind]
+      expect(t.general, `${kind}.general`).toBeGreaterThan(0)
+      expect(t.specified, `${kind}.specified`).toBeGreaterThan(0)
+      expect(t.elderlyCoLiving, `${kind}.elderlyCoLiving`).toBeGreaterThan(0)
+      expect(t.elderlyOther, `${kind}.elderlyOther`).toBeGreaterThan(0)
+      // 特定扶養（19-22歳）> 一般、同居老親 > 別居老人 の大小関係も担保。
+      expect(t.specified).toBeGreaterThan(t.general)
+      expect(t.elderlyCoLiving).toBeGreaterThan(t.elderlyOther)
+    }
+  })
+
+  it('配偶者特別控除: 控除額は配偶者所得の増加に対して非増加（バンド金額の並び）', () => {
+    for (const kind of ['incomeTax', 'residentTax'] as const) {
+      const bands = table.spouseSpecialDeduction[kind]
+      for (let tier = 0; tier < table.ownerIncomeTiers.length; tier++) {
+        for (let i = 1; i < bands.length; i++) {
+          expect(
+            bands[i].amounts[tier],
+            `${kind} band[${i}] tier[${tier}]`,
+          ).toBeLessThanOrEqual(bands[i - 1].amounts[tier])
+        }
+      }
+    }
+  })
+
+  // ── optional フィールドの構造検証（存在する年度のみ） ──
+
+  it('医療費控除（あれば）: 足切り・上限・セルフメディケーションが妥当', () => {
+    const m = table.medicalExpense
+    if (!m) return
+    expect(m.floorAmount).toBeGreaterThan(0)
+    assertRate(m.floorRate)
+    expect(m.cap).toBeGreaterThan(m.floorAmount)
+    expect(m.selfMedication.floor).toBeGreaterThan(0)
+    expect(m.selfMedication.cap).toBeGreaterThan(m.selfMedication.floor)
+  })
+
+  it('生命保険料控除（あれば）: 段階式が昇順＋終端、上限は正の数', () => {
+    const l = table.lifeInsurance
+    if (!l) return
+    for (const regime of [l.newRegime, l.oldRegime]) {
+      assertBandsAscendingWithNullLast(regime.incomeTax)
+      assertBandsAscendingWithNullLast(regime.residentTax)
+    }
+    expect(l.combinedCategoryCap.incomeTax).toBeGreaterThan(0)
+    expect(l.combinedCategoryCap.residentTax).toBeGreaterThan(0)
+    expect(l.totalCap.incomeTax).toBeGreaterThan(0)
+    expect(l.totalCap.residentTax).toBeGreaterThan(0)
+    if (l.childcareGeneralNew) {
+      assertBandsAscendingWithNullLast(l.childcareGeneralNew.incomeTax)
+      expect(l.childcareGeneralNew.combinedCap).toBeGreaterThan(0)
+    }
+  })
+
+  it('地震保険料控除（あれば）: 率は (0,1]、上限は正の数、旧長期は昇順＋終端', () => {
+    const e = table.earthquakeInsurance
+    if (!e) return
+    for (const regime of [e.incomeTax, e.residentTax]) {
+      expect(regime.earthquake.rate).toBeGreaterThan(0)
+      expect(regime.earthquake.rate).toBeLessThanOrEqual(1)
+      expect(regime.earthquake.cap).toBeGreaterThan(0)
+      assertBandsAscendingWithNullLast(regime.oldLongTerm)
+      expect(regime.totalCap).toBeGreaterThan(0)
+    }
+  })
+
+  it('住宅ローン控除（あれば）: 控除率・所得上限・住民税繰越・借入限度が妥当', () => {
+    const h = table.housingLoan
+    if (!h) return
+    assertRate(h.creditRate)
+    expect(h.incomeLimit).toBeGreaterThan(0)
+    assertRate(h.residentCarryover.rate)
+    expect(h.residentCarryover.cap).toBeGreaterThan(0)
+    expect(h.period.new).toBeGreaterThan(0)
+    expect(h.period.used).toBeGreaterThan(0)
+    // 借入限度: 各入居年×性能区分が非負で、子育て上乗せは標準以上。
+    for (const [year, limits] of Object.entries(h.limits.new)) {
+      for (const perf of ['certified', 'zeh', 'energySaving', 'other'] as const) {
+        expect(limits[perf], `new[${year}].${perf}`).toBeGreaterThanOrEqual(0)
+        const childcare = h.limits.newChildcare[Number(year)]
+        if (childcare) expect(childcare[perf]).toBeGreaterThanOrEqual(limits[perf])
+      }
+    }
+  })
+
+  it('国民年金・国保（あれば）: 年額・率・賦課限度が正の数', () => {
+    if (table.nationalPension) expect(table.nationalPension.annual).toBeGreaterThan(0)
+    const k = table.nationalHealthInsurance
+    if (!k) return
+    expect(k.basicDeduction).toBeGreaterThan(0)
+    for (const cat of [k.medical, k.support, k.longTermCare]) {
+      assertRate(cat.incomeRate)
+      expect(cat.perCapita).toBeGreaterThan(0)
+      expect(cat.cap).toBeGreaterThan(0)
+    }
+    expect(k.longTermCare.maxAge).toBeGreaterThan(k.longTermCare.minAge)
+  })
+
+  it('育児休業給付（あれば）: 給付率は (0,1)、早期>後期、日数・上限が正の数', () => {
+    const c = table.childcareLeaveBenefit
+    if (!c) return
+    assertRate(c.earlyRate)
+    assertRate(c.lateRate)
+    expect(c.earlyRate).toBeGreaterThan(c.lateRate) // 67% > 50%
+    assertRate(c.postBirthRate)
+    expect(c.earlyDays).toBeGreaterThan(0)
+    expect(c.dailyWageCap).toBeGreaterThan(0)
+    expect(c.postBirthMaxDays).toBeGreaterThan(0)
+  })
 })

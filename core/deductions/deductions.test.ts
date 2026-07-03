@@ -59,6 +59,22 @@ describe('配偶者控除・配偶者特別控除', () => {
     // 給与収入210万→給与所得139万 > 133万
     expect(spouseDeduction(4_000_000, 2_100_000, false, 'incomeTax')).toBe(0)
   })
+
+  it('配偶者特別控除: バンド境界の遷移（±1円で正しい帯に切り替わる）', () => {
+    // 給与収入≤190万は給与所得控除65万の速算式なので 合計所得＝給与収入−65万 が正確に成り立つ。
+    // 配偶者控除→特別控除の境界（所得58万）: 控除額は同額38万のまま制度が切り替わる。
+    expect(spouseDeduction(4_000_000, 1_230_000, false, 'incomeTax')).toBe(380_000) // 所得58万ちょうど＝配偶者控除
+    expect(spouseDeduction(4_000_000, 1_230_001, false, 'incomeTax')).toBe(380_000) // 58万+1円＝特別控除の第1帯
+    // 95万境界: 38万 → 36万
+    expect(spouseDeduction(4_000_000, 1_600_000, false, 'incomeTax')).toBe(380_000) // 所得95万ちょうど
+    expect(spouseDeduction(4_000_000, 1_600_001, false, 'incomeTax')).toBe(360_000) // 95万+1円
+    // 100万境界: 36万 → 31万
+    expect(spouseDeduction(4_000_000, 1_650_000, false, 'incomeTax')).toBe(360_000) // 所得100万ちょうど
+    expect(spouseDeduction(4_000_000, 1_650_001, false, 'incomeTax')).toBe(310_000) // 100万+1円
+    // 住民税は58万超〜100万が33万に統合されている帯: 100万ちょうどは33万、超えると下がる
+    expect(spouseDeduction(4_000_000, 1_650_000, false, 'residentTax')).toBe(330_000)
+    expect(spouseDeduction(4_000_000, 1_650_001, false, 'residentTax')).toBeLessThan(330_000)
+  })
 })
 
 describe('扶養控除', () => {
