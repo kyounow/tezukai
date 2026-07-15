@@ -22,6 +22,7 @@
 - 配偶者控除/配偶者特別控除: 国税庁 No.1191 / No.1195
 - 扶養控除: 国税庁 No.1180 ／ 特定親族特別控除（新設）: 国税庁 No.1177
 - 所得税の速算表: 国税庁 No.2260 ／ 復興特別所得税(2.1%): 国税庁 復興特別所得税のあらまし
+  - 復興特別所得税の課税期間は令和9年分以後の改正で**令和19年→令和29年12月31日まで10年延長**（同時に率を2.1%→1.1%へ引下げ、防衛特別所得税1.0%を新設し合算2.1%で負担不変）。本ツールの `RECONSTRUCTION_SURTAX_RATE`（0.021）は全年度共有で計算不変。出典: 国税庁「防衛特別所得税及び復興特別所得税の源泉徴収のあらまし（令和9年1月以後）」 https://www.nta.go.jp/publication/pamph/pdf/0026005-024_02.pdf 、財務省 令和8年度税制改正の大綱 https://www.mof.go.jp/tax_policy/tax_reform/outline/fy2026/08taikou_06.htm 。
 - 個人住民税（所得割・均等割・調整控除・非課税）: 総務省 個人住民税 https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/150790_06.html ／ 東京都主税局 ／ 森林環境税: 総務省 150790_18.html
 - 地震保険料控除: 国税庁 No.1145 https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1145.htm ／ 住民税分は自治体公式（地方税法。地震保険料×1/2・上限2.5万、旧長期損害保険料の段階・上限1万、合算上限2.5万）。所得税は地震保険料全額・上限5万、旧長期は段階・上限1.5万、合算上限5万
 - 健康保険・介護（協会けんぽ 令和7年度）: https://www.kyoukaikenpo.or.jp/about/business/insurance_rate/rate_prefectures/r07/index.html

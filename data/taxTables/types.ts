@@ -16,6 +16,7 @@ import type {
   DependentDeductionTable,
   DeductionBracket,
   ProgressiveBracket,
+  PublicPensionBand,
   SpouseDeductionTable,
   SpouseSpecialBand,
   StandardRemunerationGrade,
@@ -41,6 +42,40 @@ export interface ResidentTaxNonTaxable {
   readonly base: number
   readonly perCapitaAddition: number
   readonly incomePortionAddition: number
+  /**
+   * 障害者・未成年者・寡婦・ひとり親の非課税限度額（合計所得金額・円, 以下）。
+   * 級地率を掛けない全国一律値（地方税法295条第1項第2号）。
+   */
+  readonly personalNonTaxable: number
+}
+
+/** 本人の属性による所得控除額（所得税用／住民税用）。 */
+export interface PersonalDeductionAmount {
+  readonly incomeTax: number
+  readonly residentTax: number
+}
+
+/**
+ * 本人の属性による所得控除（障害者・ひとり親・寡婦・勤労学生）。
+ * 障害者控除は普通/特別。ひとり親・寡婦は合計所得の要件、勤労学生も合計所得の要件がある。
+ */
+export interface PersonalDeductionConfig {
+  /** 障害者控除（普通）。 */
+  readonly disabilityNormal: PersonalDeductionAmount
+  /** 特別障害者控除（本人・家族が特別障害者。同居特別障害者を除く）。 */
+  readonly disabilitySpecial: PersonalDeductionAmount
+  /** 同居特別障害者控除（同一生計配偶者・扶養親族が特別障害者かつ同居）。本人には適用されない。 */
+  readonly disabilityCoLivingSpecial: PersonalDeductionAmount
+  /** ひとり親控除。 */
+  readonly singleParent: PersonalDeductionAmount
+  /** 寡婦控除。 */
+  readonly widow: PersonalDeductionAmount
+  /** 勤労学生控除。 */
+  readonly workingStudent: PersonalDeductionAmount
+  /** ひとり親・寡婦の合計所得金額の要件（円, 以下）。 */
+  readonly singleParentWidowIncomeLimit: number
+  /** 勤労学生の合計所得金額の要件（円, 以下）。 */
+  readonly workingStudentIncomeLimit: number
 }
 
 export interface HumanDeductionDiff {
@@ -52,6 +87,28 @@ export interface HumanDeductionDiff {
   readonly dependentSpecified: number
   readonly dependentElderlyOther: number
   readonly dependentCoLiving: number
+  /** 障害者控除（普通・本人/家族共通）の人的控除差。 */
+  readonly disabilityNormal: number
+  /** 特別障害者控除（本人/家族共通）の人的控除差。 */
+  readonly disabilitySpecial: number
+  /** 同居特別障害者控除（家族のみ）の人的控除差。 */
+  readonly disabilityCoLivingSpecial: number
+  /** ひとり親控除の人的控除差。 */
+  readonly singleParent: number
+  /** 寡婦控除の人的控除差。 */
+  readonly widow: number
+  /** 勤労学生控除の人的控除差。 */
+  readonly workingStudent: number
+}
+
+/**
+ * 公的年金等控除（公的年金等に係る雑所得の速算表）。65歳未満/以上で控除額が変わる。
+ * 公的年金等以外の合計所得1,000万円以下の区分のみ（控除対象配偶者の判定用途では十分）。
+ * 出典: 国税庁 No.1600。
+ */
+export interface PublicPensionDeductionConfig {
+  readonly under65: readonly PublicPensionBand[]
+  readonly from65: readonly PublicPensionBand[]
 }
 
 export interface SocialInsuranceConfig {
@@ -113,7 +170,8 @@ export interface LifeInsuranceConfig {
   /** 3区分合計の適用限度額。 */
   readonly totalCap: { readonly incomeTax: number; readonly residentTax: number }
   /**
-   * 子育て世帯（23歳未満の扶養親族あり）の拡充（令和8年分のみ）。
+   * 子育て世帯（23歳未満の扶養親族あり）の拡充（令和8・令和9年分の時限特例）。
+   * 令和7年度改正で令和8年分に導入、令和8年度改正で適用期限を1年延長し令和9年分も対象。
    * 一般生命保険料(新契約)の所得税の段階式と区分上限を上書きする。住民税は据置。
    */
   readonly childcareGeneralNew?: {
@@ -152,6 +210,12 @@ export interface HousingLoanConfig {
   readonly residentCarryover: { readonly rate: number; readonly cap: number }
   /** 控除期間（表示用・新築/中古）。 */
   readonly period: { readonly new: number; readonly used: number }
+  /**
+   * 中古（既存住宅）で入居年・住宅性能により控除期間が period.used と異なる場合（円ではなく年数）。
+   * 令和8改正: 省エネ性能の高い既存住宅（認定/ZEH/省エネ基準適合）は10年→13年へ拡充。
+   * 未設定の入居年・性能は period.used（10年）にフォールバック。
+   */
+  readonly usedPeriodByYear?: Readonly<Record<number, Partial<Readonly<Record<HousingPerformance, number>>>>>
   /** 借入限度額（円）。入居年(西暦)→住宅性能区分。childcare は令和6以降新築の上乗せ。 */
   readonly limits: {
     readonly new: Readonly<Record<number, Readonly<Record<HousingPerformance, number>>>>
@@ -227,8 +291,12 @@ export interface TaxTable {
     readonly incomeTax: readonly AmountByIncomeBand[]
     readonly residentTax: readonly AmountByIncomeBand[]
   }
+  /** 公的年金等控除（配偶者等の年金収入→合計所得の換算に使用）。 */
+  readonly publicPensionDeduction: PublicPensionDeductionConfig
   readonly residentTax: ResidentTaxConfig
   readonly residentTaxNonTaxable: ResidentTaxNonTaxable
+  /** 本人の属性による所得控除（障害者・ひとり親・寡婦・勤労学生）。 */
+  readonly personalDeduction: PersonalDeductionConfig
   readonly humanDeductionDiff: HumanDeductionDiff
   readonly socialInsurance: SocialInsuranceConfig
   readonly healthGrades: readonly StandardRemunerationGrade[]

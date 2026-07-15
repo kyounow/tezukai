@@ -37,6 +37,11 @@ export interface ResidentTaxParams {
   gradeFactor?: number
   /** 均等割額の上書き（市区町村＋都道府県・森林環境税を除く・円）。超過課税の自治体向け。省略時は標準額。 */
   perCapitaOverride?: number
+  /**
+   * 障害者・未成年者・寡婦・ひとり親に該当するか（地方税法295条）。
+   * 該当し合計所得金額が非課税限度（135万円）以下なら均等割・所得割とも非課税になる。
+   */
+  personalNonTaxableEligible?: boolean
 }
 
 /**
@@ -56,8 +61,10 @@ export function residentTax(p: ResidentTaxParams, table: TaxTable = getTaxTable(
   const perPerson = Math.round(nt.perPerson * factor)
   const perCapitaLimit = perPerson * count + nt.base + (hasDependents ? Math.round(nt.perCapitaAddition * factor) : 0)
   const incomePortionLimit = perPerson * count + nt.base + (hasDependents ? Math.round(nt.incomePortionAddition * factor) : 0)
-  const perCapitaExempt = p.totalIncome <= perCapitaLimit
-  const incomePortionExempt = p.totalIncome <= incomePortionLimit
+  // 障害者・未成年者・寡婦・ひとり親は合計所得135万円以下で均等割・所得割とも非課税（地方税法295条・級地率なし）。
+  const personalNonTaxable = (p.personalNonTaxableEligible ?? false) && p.totalIncome <= nt.personalNonTaxable
+  const perCapitaExempt = p.totalIncome <= perCapitaLimit || personalNonTaxable
+  const incomePortionExempt = p.totalIncome <= incomePortionLimit || personalNonTaxable
 
   const adj = adjustmentCredit(taxable, p.humanDeductionDiffSum, p.totalIncome, table)
 
@@ -79,5 +86,7 @@ export function residentTax(p: ResidentTaxParams, table: TaxTable = getTaxTable(
     forestTax,
     adjustmentCredit: incomePortionExempt ? 0 : adj,
     total: incomePortion + perCapita + forestTax,
+    perCapitaExempt,
+    incomePortionExempt,
   }
 }

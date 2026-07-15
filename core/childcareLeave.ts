@@ -9,7 +9,7 @@ import type { ChildcareLeaveInput } from './types'
  *   給付率の67%/50%は分割しても育休開始からの通算日数で判定する。
  * - 出生後休業支援給付金 = 賃金日額 × min(通算育休日数, 28) × 13%（両親とも14日以上育休時）。
  * - いずれも非課税・社会保険料の算定対象外。
- * - 社会保険料免除月数 = 全期間の和集合で「月末が育休中」または「同一月に14日以上育休」の暦月数（令和4.10〜）。
+ * - 社会保険料免除月数 = 全期間の和集合で「月末が育休中」または「同月内に開始・終了する育休が14日以上」の暦月数（令和4.10〜）。月をまたぐ育休の復職月は14日ルール対象外。
  * - 給与減（課税）は月給×通算育休日数/30 の日割り近似。
  *
  * 年またぎ: 第3引数 year を渡すと、その暦年内の育休日数のみを当年分として計算する（税は暦年課税のため）。
@@ -86,31 +86,43 @@ function mergeIntervals(intervals: Interval[]): Interval[] {
   return out
 }
 
-/** 全期間（重なりマージ済み）の和集合で社会保険料免除月数を数える（月末育休 or 月内14日以上）。 */
-function countExemptMonths(intervals: Interval[]): number {
-  if (intervals.length === 0) return 0
-  const minStart = Math.min(...intervals.map((iv) => iv.start.getTime()))
-  const maxEnd = Math.max(...intervals.map((iv) => iv.end.getTime()))
-  const first = new Date(minStart)
-  const last = new Date(maxEnd)
+/**
+ * 全期間（重なりマージ済み・クリップ前）の和集合で社会保険料免除月数を数える。
+ * 判定（令和4.10改正）は「その月末が育休中」または「同月内に開始・終了する育休（分割は合算）が14日以上」。
+ * 月をまたぐ育休の復職月（月途中で復帰）は14日ルール対象外＝月末が育休でなければ非免除。
+ * yearStart/yearEnd で対象暦年に走査範囲をクリップ（year未指定時は ±Infinity で全期間）。
+ * ただし月末判定・同月内完結判定は必ずクリップ前の区間で行う（クリップ後だと前年開始→当年途中復職が
+ * 同月内完結に誤判定される罠を回避）。
+ */
+function countExemptMonths(merged: Interval[], yearStart: number, yearEnd: number): number {
+  if (merged.length === 0) return 0
+  const minStart = Math.min(...merged.map((iv) => iv.start.getTime()))
+  const maxEnd = Math.max(...merged.map((iv) => iv.end.getTime()))
+  // 走査範囲＝マージ区間の全体スパン ∩ クリップ範囲（暦年）。クリップ範囲は暦月境界に一致するので端数月は出ない。
+  const loopStart = Math.max(minStart, yearStart)
+  const loopEnd = Math.min(maxEnd, yearEnd)
+  if (loopStart > loopEnd) return 0
+  const first = new Date(loopStart)
+  const last = new Date(loopEnd)
   let y = first.getUTCFullYear()
   let m = first.getUTCMonth() // 0-based
   const endY = last.getUTCFullYear()
   const endM = last.getUTCMonth()
   let count = 0
   while (y < endY || (y === endY && m <= endM)) {
-    const monthStart = Date.UTC(y, m, 1)
     const monthEnd = new Date(Date.UTC(y, m + 1, 0)) // その月の末日
-    // マージ済みなので同一月内の区間は重ならず、月内の育休日数は単純に合算してよい。
-    let unionDays = 0
+    // (a) 月末が育休中（クリップ前区間で判定）。
     let monthEndInLeave = false
-    for (const iv of intervals) {
-      const oS = Math.max(iv.start.getTime(), monthStart)
-      const oE = Math.min(iv.end.getTime(), monthEnd.getTime())
-      if (oE >= oS) unionDays += Math.floor((oE - oS) / DAY_MS) + 1
+    // (b) 開始月＝終了日翌日の属する月＝当月 の区間だけを「同月内完結」として日数合算（月またぎ復職月を除外）。
+    let sameMonthDays = 0
+    for (const iv of merged) {
       if (monthEnd.getTime() >= iv.start.getTime() && monthEnd.getTime() <= iv.end.getTime()) monthEndInLeave = true
+      const startInMonth = iv.start.getUTCFullYear() === y && iv.start.getUTCMonth() === m
+      const endNext = new Date(iv.end.getTime() + DAY_MS) // 終了日の翌日＝復職日
+      const endInMonth = endNext.getUTCFullYear() === y && endNext.getUTCMonth() === m
+      if (startInMonth && endInMonth) sameMonthDays += inclusiveDays(iv.start, iv.end)
     }
-    if (monthEndInLeave || unionDays >= 14) count++
+    if (monthEndInLeave || sameMonthDays >= 14) count++
     m++
     if (m > 11) {
       m = 0
@@ -167,7 +179,8 @@ export function computeChildcareLeave(
     : 0
   const postBirthBenefit = Math.floor(postBirthDays * dailyWage * cfg.postBirthRate)
 
-  const exemptMonths = countExemptMonths(clipped)
+  // 免除月数は当年へクリップした走査範囲で数えるが、月末・同月内完結の判定はクリップ前の merged 区間で行う。
+  const exemptMonths = countExemptMonths(merged, yearStart, yearEnd)
   const salaryReduction = Math.floor((monthly * leaveDays) / 30)
 
   return {

@@ -12,7 +12,8 @@
  *   - 社会保険料（令和8年度）: 協会けんぽ東京 健保9.85%・介護1.62%・雇用5/1000、
  *     子ども・子育て支援金率0.23%（新設）。出典: 協会けんぽ R8 保険料額表、厚労省 R8 雇用保険料率。
  *   - 生命保険料控除: 子育て世帯（23歳未満扶養）の一般生命保険(新)の所得税上限を6万円に拡充
- *     （令和8年分のみ）。出典: 財務省 令和7年度税制改正の大綱、国税庁。
+ *     （令和8・令和9年分の時限特例）。令和7年度改正で令和8年分に導入し、令和8年度改正で適用期限を
+ *     1年延長（令和9年分も対象）。出典: 財務省 令和7年度・令和8年度税制改正の大綱、国税庁。
  *   - 住宅ローン控除: 令和8入居の借入限度（新築省エネ通常2000万、中古は子育て上乗せ＋13年化）。
  *     出典: 財務省 令和8年度税制改正パンフレット、国交省。
  * 詳細は data/taxTables/sources-2026.md を参照。
@@ -38,6 +39,8 @@ import {
   LIFE_INSURANCE_2025,
   MEDICAL_EXPENSE_2025,
   PENSION_GRADES_2025,
+  PERSONAL_DEDUCTION_2025,
+  PUBLIC_PENSION_DEDUCTION_2025,
   RECONSTRUCTION_SURTAX_RATE,
   RESIDENT_TAX_2025,
   RESIDENT_TAX_NON_TAXABLE_2025,
@@ -93,7 +96,8 @@ const SOCIAL_INSURANCE_2026: SocialInsuranceConfig = {
   latterStageElderlyAge: 75, // 75歳で後期高齢者医療へ移行（健保の給与天引きなし）
 }
 
-// 生命保険料控除（令和8年分・子育て世帯の一般生命保険(新)の所得税上限6万円）
+// 生命保険料控除（令和8・令和9年分・子育て世帯の一般生命保険(新)の所得税上限6万円）
+// 令和8年度改正で適用期限を1年延長（令和9年分も対象。2027.ts が本定数を継承）。
 // 出典: 3万以下=全額／3万超6万=×1/2+1.5万／6万超12万=×1/4+3万／12万超=6万。
 const LIFE_INSURANCE_2026: LifeInsuranceConfig = {
   ...LIFE_INSURANCE_2025,
@@ -109,11 +113,19 @@ const LIFE_INSURANCE_2026: LifeInsuranceConfig = {
 }
 
 // 住宅ローン控除：令和4〜7入居は令和7テーブルを再利用し、令和8入居を追加。
+// 令和8改正: 省エネ性能の高い既存住宅（認定/ZEH/省エネ基準適合）は控除期間を10年→13年へ拡充
+//   （その他=省エネ基準なしは10年のまま）。適用は令和8年1月1日〜令和12年12月31日入居。
+// 出典: 財務省 令和8年度税制改正の大綱 https://www.mof.go.jp/tax_policy/tax_reform/outline/fy2026/08taikou_01.htm 、
+//   国交省 報道発表 https://www.mlit.go.jp/report/press/house02_hh_000241.html （既存住宅の借入限度引上げ・13年化）。
 const HOUSING_LOAN_2026: HousingLoanConfig = {
   creditRate: 0.007,
   incomeLimit: 20_000_000,
   residentCarryover: { rate: 0.05, cap: 97_500 },
-  period: { new: 13, used: 10 }, // 中古（既存住宅）は一律10年（国税庁 No.1211-3）
+  period: { new: 13, used: 10 }, // period.used=10 は既定。令和8以降入居の省エネ中古は usedPeriodByYear で13年に上書き
+  // 令和8入居の中古: 認定/ZEH/省エネ基準適合は13年（その他は period.used=10 のまま）。
+  usedPeriodByYear: {
+    2026: { certified: 13, zeh: 13, energySaving: 13 },
+  },
 
   limits: {
     new: {
@@ -125,6 +137,7 @@ const HOUSING_LOAN_2026: HousingLoanConfig = {
       2026: { certified: 50_000_000, zeh: 45_000_000, energySaving: 30_000_000, other: 0 },
     },
     used: HOUSING_LOAN_2025.limits.used,
+    // 令和8入居の中古（既存住宅）借入限度: 認定/ZEH 3,500／4,500万、省エネ基準適合 2,000／3,000万、その他 2,000万。
     usedByYear: {
       2026: {
         standard: { certified: 35_000_000, zeh: 35_000_000, energySaving: 20_000_000, other: 20_000_000 },
@@ -152,8 +165,11 @@ export const TAX_TABLE_2026: TaxTable = {
   spouseSpecialDeduction: SPOUSE_SPECIAL_DEDUCTION_2025,
   dependentDeduction: DEPENDENT_DEDUCTION_2025,
   specialRelativeDeduction: SPECIAL_RELATIVE_DEDUCTION_2025,
+  publicPensionDeduction: PUBLIC_PENSION_DEDUCTION_2025, // 公的年金等控除は令和2年分以後不変（令和7を再利用）
   residentTax: RESIDENT_TAX_2025,
   residentTaxNonTaxable: RESIDENT_TAX_NON_TAXABLE_2025,
+  // 障害者・ひとり親・寡婦・勤労学生控除は令和8改正で不変（令和7を再利用）。
+  personalDeduction: PERSONAL_DEDUCTION_2025,
   humanDeductionDiff: HUMAN_DEDUCTION_DIFF_2025,
   socialInsurance: SOCIAL_INSURANCE_2026,
   healthGrades: HEALTH_GRADES_2025,

@@ -13,6 +13,8 @@ import type {
   MedicalExpenseConfig,
   NationalHealthInsuranceConfig,
   NationalPensionConfig,
+  PersonalDeductionConfig,
+  PublicPensionDeductionConfig,
   TaxTable,
 } from './types'
 
@@ -61,7 +63,14 @@ export const INCOME_TAX_BRACKETS_2025: readonly ProgressiveBracket[] = [
   { upTo: null, rate: 0.45, deduction: 4_796_000 },
 ]
 
-/** 復興特別所得税率（基準所得税額×2.1%）。令和19年まで。出典: 国税庁 復興特別所得税のあらまし */
+/**
+ * 復興特別所得税率（基準所得税額×2.1%）。全年度で共有する定数。
+ * 令和8年分まで復興特別所得税2.1%。令和9年分以後は復興特別所得税1.1%（課税期間を令和19年→**令和29年12月31日**まで
+ * 10年延長）＋防衛特別所得税1.0%の合算2.1%で負担は不変のため、率は 0.021 のまま（内訳の変化のみ。2027.ts の注記参照）。
+ * 出典: 国税庁「防衛特別所得税及び復興特別所得税の源泉徴収のあらまし（令和9年1月以後の源泉徴収）」
+ *   https://www.nta.go.jp/publication/pamph/pdf/0026005-024_02.pdf 、財務省 令和8年度税制改正の大綱
+ *   https://www.mof.go.jp/tax_policy/tax_reform/outline/fy2026/08taikou_06.htm 。
+ */
 export const RECONSTRUCTION_SURTAX_RATE = 0.021
 
 // ─────────────────────────────────────────────────────────────
@@ -218,6 +227,43 @@ export const SPECIAL_RELATIVE_DEDUCTION_2025: {
 }
 
 // ─────────────────────────────────────────────────────────────
+// 公的年金等控除（公的年金等に係る雑所得の速算表・令和2年分以後）
+// 出典: 国税庁 No.1600 公的年金等の課税関係
+//   https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/1600.htm
+// 雑所得 = max(0, 収入金額 × rate − deduction)。65歳到達（12/31時点）で控除額が拡大する。
+// 本アプリは「公的年金等以外の合計所得金額1,000万円以下」の区分のみ実装する（控除対象配偶者は
+// 年金以外の所得1,000万円超では対象外のため十分。速算表は令和2年分以後不変＝令和7以降も同じ）。
+// upTo は各割合区分の収入上限。区分境界では両式の値が一致するため upTo は丸め値でよい。
+// ─────────────────────────────────────────────────────────────
+export interface PublicPensionBand {
+  /** 公的年金等の収入金額の上限（円）。null は上限なし。 */
+  readonly upTo: number | null
+  /** 収入金額に乗じる割合。 */
+  readonly rate: number
+  /** 差し引く控除額（円）。 */
+  readonly deduction: number
+}
+
+export const PUBLIC_PENSION_DEDUCTION_2025: PublicPensionDeductionConfig = {
+  // 65歳未満: 収入60万円以下は雑所得0（130万未満まで控除60万相当）。
+  under65: [
+    { upTo: 1_300_000, rate: 1, deduction: 600_000 },
+    { upTo: 4_100_000, rate: 0.75, deduction: 275_000 },
+    { upTo: 7_700_000, rate: 0.85, deduction: 685_000 },
+    { upTo: 10_000_000, rate: 0.95, deduction: 1_455_000 },
+    { upTo: null, rate: 1, deduction: 1_955_000 },
+  ],
+  // 65歳以上: 収入110万円以下は雑所得0（330万未満まで控除110万相当）。
+  from65: [
+    { upTo: 3_300_000, rate: 1, deduction: 1_100_000 },
+    { upTo: 4_100_000, rate: 0.75, deduction: 275_000 },
+    { upTo: 7_700_000, rate: 0.85, deduction: 685_000 },
+    { upTo: 10_000_000, rate: 0.95, deduction: 1_455_000 },
+    { upTo: null, rate: 1, deduction: 1_955_000 },
+  ],
+}
+
+// ─────────────────────────────────────────────────────────────
 // 個人住民税（令和7年度／令和8年度）標準
 // 出典: 総務省 個人住民税 150790_06.html、東京都主税局、森林環境税 150790_18.html
 // ─────────────────────────────────────────────────────────────
@@ -253,13 +299,42 @@ export const RESIDENT_TAX_NON_TAXABLE_2025 = {
   perCapitaAddition: 210_000,
   /** 所得割: 同一生計配偶者・扶養親族がいる場合の加算。 */
   incomePortionAddition: 320_000,
+  /**
+   * 障害者・未成年者・寡婦・ひとり親の非課税限度額（合計所得135万円以下・級地率なし）。
+   * 給与収入のみなら約204.4万円に相当。出典: 地方税法295条第1項第2号、東京都主税局。
+   */
+  personalNonTaxable: 1_350_000,
 } as const
+
+// ─────────────────────────────────────────────────────────────
+// 本人の属性による所得控除（障害者・ひとり親・寡婦・勤労学生）
+// 出典: 国税庁 No.1160（障害者控除）・No.1170（寡婦控除）・No.1171（ひとり親控除）・
+//   No.1175（勤労学生控除）、地方税法295条、東京都主税局。
+// 控除額（円, 所得税/住民税）: 障害者 普通27万/26万・特別40万/30万・同居特別75万/53万、
+//   ひとり親35万/30万、寡婦27万/26万、勤労学生27万/26万。
+// 同居特別障害者は同一生計配偶者・扶養親族が特別障害者かつ同居の場合（本人には適用なし）。
+// 所得要件: ひとり親・寡婦は合計所得500万円以下、勤労学生は合計所得75万円以下。
+//   （勤労学生の「勤労以外の所得10万円以下」要件は本アプリでは近似で省略。）
+// ─────────────────────────────────────────────────────────────
+export const PERSONAL_DEDUCTION_2025: PersonalDeductionConfig = {
+  disabilityNormal: { incomeTax: 270_000, residentTax: 260_000 },
+  disabilitySpecial: { incomeTax: 400_000, residentTax: 300_000 },
+  disabilityCoLivingSpecial: { incomeTax: 750_000, residentTax: 530_000 },
+  singleParent: { incomeTax: 350_000, residentTax: 300_000 },
+  widow: { incomeTax: 270_000, residentTax: 260_000 },
+  workingStudent: { incomeTax: 270_000, residentTax: 260_000 },
+  singleParentWidowIncomeLimit: 5_000_000,
+  workingStudentIncomeLimit: 750_000,
+}
 
 /**
  * 調整控除で用いる「人的控除額の差」（所得税の控除額 − 住民税の控除額の法定差額）。
  * 注: 主要な人的控除のみ。本人合計所得900万円超のティアや配偶者特別控除の所得帯による差は
  * 当面この基準値で近似する（sources-2025.md の openQuestions 参照）。
- * 出典: 各自治体の「人的控除の差と調整控除」（例: 諏訪市）。
+ * 障害者・寡婦・勤労学生の差は控除額の差そのもの（障害者普通1万/特別10万/同居特別22万、寡婦・勤労学生1万）。
+ * ひとり親は母5万（35万−30万）を用いる。ひとり親（父）の法定差額は1万だが、本アプリは父母を
+ * 区別しないため5万で近似する（該当は母が大多数・差額は最大4万円）。
+ * 出典: 東京都主税局「人的控除の差と調整控除」・各自治体（例: 諏訪市）。
  */
 export const HUMAN_DEDUCTION_DIFF_2025 = {
   basic: 50_000,
@@ -271,6 +346,18 @@ export const HUMAN_DEDUCTION_DIFF_2025 = {
   dependentSpecified: 180_000,
   dependentElderlyOther: 100_000,
   dependentCoLiving: 130_000,
+  /** 障害者控除（普通）: 27万−26万。 */
+  disabilityNormal: 10_000,
+  /** 特別障害者控除: 40万−30万。 */
+  disabilitySpecial: 100_000,
+  /** 同居特別障害者控除: 75万−53万。 */
+  disabilityCoLivingSpecial: 220_000,
+  /** ひとり親控除: 母35万−30万（父は法定1万だが5万で近似）。 */
+  singleParent: 50_000,
+  /** 寡婦控除: 27万−26万。 */
+  widow: 10_000,
+  /** 勤労学生控除: 27万−26万。 */
+  workingStudent: 10_000,
 } as const
 
 // ─────────────────────────────────────────────────────────────
@@ -543,8 +630,10 @@ export const TAX_TABLE_2025: TaxTable = {
   spouseSpecialDeduction: SPOUSE_SPECIAL_DEDUCTION_2025,
   dependentDeduction: DEPENDENT_DEDUCTION_2025,
   specialRelativeDeduction: SPECIAL_RELATIVE_DEDUCTION_2025,
+  publicPensionDeduction: PUBLIC_PENSION_DEDUCTION_2025,
   residentTax: RESIDENT_TAX_2025,
   residentTaxNonTaxable: RESIDENT_TAX_NON_TAXABLE_2025,
+  personalDeduction: PERSONAL_DEDUCTION_2025,
   humanDeductionDiff: HUMAN_DEDUCTION_DIFF_2025,
   socialInsurance: SOCIAL_INSURANCE_2025,
   healthGrades: HEALTH_GRADES_2025,

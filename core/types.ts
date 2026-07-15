@@ -12,8 +12,15 @@ export type { TaxYear, HousingConstruction, HousingPerformance }
 
 /** 配偶者の入力。 */
 export interface SpouseInput {
-  /** 配偶者の給与収入（額面・円）。給与以外の所得は当面未対応。 */
+  /**
+   * 配偶者の収入金額（円）。incomeType が 'salary'（既定）なら給与収入（額面）、
+   * 'pension' なら公的年金等の収入金額（控除前）。合計所得への換算は core 側で行う。
+   */
   salaryIncome: number
+  /** 収入の種類（省略時 'salary'＝給与。後方互換）。 */
+  incomeType?: 'salary' | 'pension'
+  /** 公的年金のとき、配偶者がその年12月31日時点で65歳以上か（公的年金等控除が拡大）。 */
+  pensionOver65?: boolean
   /** その年12月31日時点で70歳以上か（老人控除対象配偶者の判定）。 */
   elderly?: boolean
 }
@@ -117,6 +124,35 @@ export interface OtherIncomeInput {
   generalShortTermCapital?: number
   /** 総合課税の長期譲渡所得（1/2前・損失は当面0）。 */
   generalLongTermCapital?: number
+}
+
+/**
+ * 本人の属性（障害者・ひとり親・寡婦・勤労学生）による所得控除の該当条件。
+ * ひとり親・寡婦は合計所得500万円以下、勤労学生は合計所得75万円以下が要件（core 側で判定）。
+ * 障害者・寡婦・ひとり親・未成年者は合計所得135万円以下で住民税が非課税になる（地方税法295条）。
+ */
+export interface PersonalInput {
+  /** ひとり親（生計を一にする子があり未婚・離死別。ひとり親と寡婦は重複適用しない）。 */
+  singleParent?: boolean
+  /** 寡婦（ひとり親に該当しない場合）。 */
+  widow?: boolean
+  /** 勤労学生。 */
+  workingStudent?: boolean
+  /** 障害者控除の区分（none＝非該当／normal＝普通障害者／special＝特別障害者）。 */
+  disability?: 'none' | 'normal' | 'special'
+}
+
+/**
+ * 同一生計配偶者・扶養親族の障害者の人数（障害者控除）。所得要件はない。
+ * 障害者である配偶者は同一生計配偶者（合計所得58万円以下）が対象だが、本アプリは人数で近似する。
+ */
+export interface FamilyDisabilityInput {
+  /** 普通障害者の人数。 */
+  normal?: number
+  /** 特別障害者（同居以外）の人数。 */
+  special?: number
+  /** 同居特別障害者（本人・配偶者・生計を一にする親族のいずれかと同居）の人数。 */
+  coLivingSpecial?: number
 }
 
 /** 所得金額調整控除（子ども・特別障害者等）の該当条件。 */
@@ -229,6 +265,10 @@ export interface TakeHomeInput {
   otherIncome?: OtherIncomeInput
   /** 所得金額調整控除（給与収入850万超）の該当条件。 */
   incomeAdjustment?: IncomeAdjustmentInput
+  /** 本人の属性（障害者・ひとり親・寡婦・勤労学生）。所得控除と住民税135万円非課税の判定に使用。 */
+  personal?: PersonalInput
+  /** 同一生計配偶者・扶養親族の障害者（障害者控除）。 */
+  familyDisability?: FamilyDisabilityInput
   /** 個人事業主モードの事業所得。 */
   business?: BusinessInput
   /** 国民健康保険の加入人数（世帯。均等割に使用。省略時1）。 */
@@ -265,6 +305,8 @@ export interface DeductionsBreakdown {
   dependents: number
   /** 特定親族特別控除。 */
   specialRelative: number
+  /** 属性による所得控除（本人の障害者・ひとり親・寡婦・勤労学生＋同一生計配偶者・扶養親族の障害者の合計）。 */
+  personal: number
   /** 医療費控除（Phase 4）。 */
   medical: number
   /** 生命保険料控除（Phase 4）。 */
@@ -301,6 +343,10 @@ export interface ResidentTaxBreakdown {
   adjustmentCredit: number
   /** 合計（所得割＋均等割＋森林環境税）。 */
   total: number
+  /** 均等割が非課税限度額以下か（本人分の判定。true なら均等割・所得割とも非課税）。 */
+  perCapitaExempt: boolean
+  /** 所得割が非課税限度額以下か（本人分の判定。均等割は課税されうる）。 */
+  incomePortionExempt: boolean
 }
 
 /** 手取り計算の結果（内訳付き）。 */
@@ -335,6 +381,11 @@ export interface TakeHomeResult {
   taxableForIncomeTax: number
   /** 住民税の課税標準（1,000円未満切捨て後）。 */
   taxableForResidentTax: number
+  /**
+   * 調整控除に用いた人的控除額の差の合計（所得税−住民税の法定差額・主要控除のみの近似）。
+   * ふるさと納税の特例控除の税率判定（住民税課税総所得−人的控除差で所得税ブラケットを引く）に使う。
+   */
+  humanDeductionDiffSum: number
   /** 所得税（住宅ローン控除適用後・復興特別所得税込み・年額・100円未満切捨て後）。 */
   incomeTax: number
   /** 住民税（所得割＋均等割＋森林環境税。住宅ローン控除の住民税繰越分を反映後）。 */

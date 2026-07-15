@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { TAX_TABLES } from '@data/taxTables/index'
+import { TAX_TABLES, getTaxTable } from '@data/taxTables/index'
 import type { AmountByIncomeBand, DeductionBracket, ProgressiveBracket, StandardRemunerationGrade } from '@data/taxTables/2025'
 import type { TaxTable } from '@data/taxTables/types'
 
@@ -89,6 +89,18 @@ describe.each(Object.entries(TAX_TABLES))('TaxTable 契約: %s', (key, table: Ta
     }
   })
 
+  it('公的年金等控除: 65歳未満/以上の速算表が昇順＋終端、割合(0,1]・控除額は非負', () => {
+    const p = table.publicPensionDeduction
+    for (const bands of [p.under65, p.from65]) {
+      assertBandsAscendingWithNullLast(bands)
+      bands.forEach((b) => {
+        expect(b.rate).toBeGreaterThan(0)
+        expect(b.rate).toBeLessThanOrEqual(1)
+        expect(b.deduction).toBeGreaterThanOrEqual(0)
+      })
+    }
+  })
+
   it('住民税: 所得割の市＋道府県＝合計、料率は (0,1)、均等割/森林税は非負', () => {
     const { incomeRate, perCapita, forestTax, adjustment } = table.residentTax
     expect(incomeRate.city + incomeRate.prefecture).toBeCloseTo(incomeRate.total, 10)
@@ -119,9 +131,27 @@ describe.each(Object.entries(TAX_TABLES))('TaxTable 契約: %s', (key, table: Ta
     expect(nt.base).toBeGreaterThan(0)
     expect(nt.perCapitaAddition).toBeGreaterThan(0)
     expect(nt.incomePortionAddition).toBeGreaterThan(0)
+    expect(nt.personalNonTaxable).toBeGreaterThan(0) // 障害者等の135万円非課税限度
   })
 
-  it('調整控除の人的控除差: 全8フィールドが正の数（欠落や0は調整控除を静かに壊す）', () => {
+  it('本人の属性控除: 障害者・ひとり親・寡婦・勤労学生が所得税・住民税とも正、所得要件が正', () => {
+    const pd = table.personalDeduction
+    for (const kind of ['incomeTax', 'residentTax'] as const) {
+      expect(pd.disabilityNormal[kind], `disabilityNormal.${kind}`).toBeGreaterThan(0)
+      expect(pd.disabilitySpecial[kind], `disabilitySpecial.${kind}`).toBeGreaterThan(0)
+      expect(pd.disabilityCoLivingSpecial[kind], `disabilityCoLivingSpecial.${kind}`).toBeGreaterThan(0)
+      expect(pd.singleParent[kind], `singleParent.${kind}`).toBeGreaterThan(0)
+      expect(pd.widow[kind], `widow.${kind}`).toBeGreaterThan(0)
+      expect(pd.workingStudent[kind], `workingStudent.${kind}`).toBeGreaterThan(0)
+      // 同居特別障害者 > 特別障害者 > 普通障害者 の大小関係。
+      expect(pd.disabilitySpecial[kind]).toBeGreaterThan(pd.disabilityNormal[kind])
+      expect(pd.disabilityCoLivingSpecial[kind]).toBeGreaterThan(pd.disabilitySpecial[kind])
+    }
+    expect(pd.singleParentWidowIncomeLimit).toBeGreaterThan(0)
+    expect(pd.workingStudentIncomeLimit).toBeGreaterThan(0)
+  })
+
+  it('調整控除の人的控除差: 全フィールドが正の数（欠落や0は調整控除を静かに壊す）', () => {
     const d = table.humanDeductionDiff
     for (const key of [
       'basic',
@@ -132,6 +162,12 @@ describe.each(Object.entries(TAX_TABLES))('TaxTable 契約: %s', (key, table: Ta
       'dependentSpecified',
       'dependentElderlyOther',
       'dependentCoLiving',
+      'disabilityNormal',
+      'disabilitySpecial',
+      'disabilityCoLivingSpecial',
+      'singleParent',
+      'widow',
+      'workingStudent',
     ] as const) {
       expect(d[key], `humanDeductionDiff.${key}`).toBeGreaterThan(0)
     }
@@ -212,8 +248,16 @@ describe.each(Object.entries(TAX_TABLES))('TaxTable 契約: %s', (key, table: Ta
     expect(h.incomeLimit).toBeGreaterThan(0)
     assertRate(h.residentCarryover.rate)
     expect(h.residentCarryover.cap).toBeGreaterThan(0)
-    expect(h.period.new).toBeGreaterThan(0)
-    expect(h.period.used).toBeGreaterThan(0)
+    // 控除期間: 新築13年・中古10年（現行制度）。usedPeriodByYear の値は10か13のみ（令和8改正の中古13年化）。
+    expect(h.period.new).toBe(13)
+    expect(h.period.used).toBe(10)
+    if (h.usedPeriodByYear) {
+      for (const [year, byPerf] of Object.entries(h.usedPeriodByYear)) {
+        for (const [perf, years] of Object.entries(byPerf)) {
+          expect([10, 13], `usedPeriodByYear[${year}].${perf}`).toContain(years)
+        }
+      }
+    }
     // 借入限度: 各入居年×性能区分が非負で、子育て上乗せは標準以上。
     for (const [year, limits] of Object.entries(h.limits.new)) {
       for (const perf of ['certified', 'zeh', 'energySaving', 'other'] as const) {
@@ -247,5 +291,14 @@ describe.each(Object.entries(TAX_TABLES))('TaxTable 契約: %s', (key, table: Ta
     expect(c.earlyDays).toBeGreaterThan(0)
     expect(c.dailyWageCap).toBeGreaterThan(0)
     expect(c.postBirthMaxDays).toBeGreaterThan(0)
+  })
+})
+
+// ── 年度固有の不変条件（describe.each の外で個別に検証） ──
+describe('年度固有の制度', () => {
+  it('令和9（2027）: 子育て世帯の一般生命保険(新)拡充が存続（令和8年度改正で1年延長・誤削除防止）', () => {
+    // 令和8年度改正で「23歳未満の扶養親族を有する場合の生命保険料控除の特例の適用期限を1年延長」＝令和9年分も対象。
+    // 出典: 財務省 令和8年度税制改正の大綱（08taikou_01.htm）。2027.ts は 2026.ts の childcareGeneralNew を継承する。
+    expect(getTaxTable(2027).lifeInsurance?.childcareGeneralNew).toBeDefined()
   })
 })
