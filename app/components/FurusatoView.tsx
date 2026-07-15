@@ -38,6 +38,10 @@ export function FurusatoView({ furusato: f, actual: a, form, onChange }: Props) 
                 <th className="summary__th">所得税の限界税率</th>
                 <td className="summary__td">{percent(f.marginalIncomeTaxRate)}</td>
               </tr>
+              <tr className="summary__row">
+                <th className="summary__th">特例控除に適用される税率</th>
+                <td className="summary__td">{percent(f.specialCreditRate)}</td>
+              </tr>
             </tbody>
           </table>
         </>

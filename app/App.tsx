@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { calculateTakeHome, furusatoFromResult, furusatoActual, getTaxTable } from '@core/index'
 import { defaultForm, toInput, type FormState } from './state'
-import { eraLabel } from './format'
+import { eraLabel, yen, perMonth } from './format'
 import { InputForm } from './components/InputForm'
 import { ExtraDeductionsForm } from './components/ExtraDeductionsForm'
 import { ResultView } from './components/ResultView'
@@ -26,12 +26,22 @@ export function App() {
       </header>
 
       {getTaxTable(form.taxYear).provisional && (
-        <div className="app__banner" role="status" aria-live="polite">
-          ※ <strong>{eraLabel(form.taxYear)}分は暫定（工事中）</strong>です。所得税は確定済みの令和8年度改正（基礎控除・給与所得控除）を反映していますが、
-          今後の税制改正で内容が変わる可能性があります。令和9年分は<strong>防衛特別所得税1.0%を新設・復興特別所得税を1.1%に引下げ</strong>（合算2.1%で税額は不変）。
-          社会保険料率（協会けんぽ・雇用保険・子ども子育て支援金）は<strong>令和8年度を流用</strong>しています（国民年金のみ令和9確定額。
-          個人事業主の国民健康保険は令和7年度〔東京特別区〕を流用）。厚生年金の標準報酬月額の上限引上げ（令和9年9月〜68万円）は
-          年度途中改定のため未反映で、高所得者の厚生年金保険料を低め（手取りを高め）に概算します。
+        // 要約（role=status）と詳しい前提（details）を分離。details はライブリージョン外に置き、
+        // 開閉時に読み上げが走らないようにする（role/aria-live は要約の <p> のみに付与）。
+        <div className="app__banner">
+          <p style={{ margin: 0 }} role="status" aria-live="polite">
+            ※ <strong>{eraLabel(form.taxYear)}分は暫定（工事中）</strong>です。所得税は確定済みの令和8年度改正（基礎控除・給与所得控除）を反映していますが、
+            社会保険料率などは一部で前後の年度の数値を流用しており、今後の税制改正で内容が変わる可能性があります。
+          </p>
+          <details style={{ marginTop: '0.5rem' }}>
+            <summary style={{ cursor: 'pointer' }}>詳しい前提を見る</summary>
+            <p style={{ margin: '0.4rem 0 0' }}>
+              令和9年分は<strong>防衛特別所得税1.0%を新設・復興特別所得税を1.1%に引下げ</strong>（合算2.1%で税額は不変）。
+              社会保険料率（協会けんぽ・雇用保険・子ども子育て支援金）は<strong>令和8年度を流用</strong>しています（国民年金のみ令和9確定額。
+              個人事業主の国民健康保険は令和7年度〔東京特別区〕を流用）。厚生年金の標準報酬月額の上限引上げ（令和9年9月〜68万円）は
+              年度途中改定のため未反映で、高所得者の厚生年金保険料を低め（手取りを高め）に概算します。
+            </p>
+          </details>
         </div>
       )}
 
@@ -62,6 +72,21 @@ export function App() {
           所得税は{eraLabel(result.taxYear)}分、個人住民税は翌年度（当年所得）の標準的な税率・控除に基づきます。
         </p>
       </footer>
+
+      {/* モバイル（760px 以下）で結果がフォーム下に沈むため、手取りを画面下部に常時追従表示。
+          読み上げ正本は ResultView 側のため aria-hidden の表示専用（フォーカス可能要素は置かない）。 */}
+      <MobileResultBar takeHome={result.takeHome} />
     </main>
+  )
+}
+
+/** モバイル用の追従ミニ結果バー（表示専用・aria-hidden）。760px 超では CSS で非表示。 */
+function MobileResultBar({ takeHome }: { takeHome: number }) {
+  return (
+    <div className="mobile-bar" aria-hidden="true">
+      <span className="mobile-bar__label">年間手取り</span>
+      <span className="mobile-bar__value">{yen(takeHome)}</span>
+      <span className="mobile-bar__sub">（月あたり {perMonth(takeHome)}）</span>
+    </div>
   )
 }
