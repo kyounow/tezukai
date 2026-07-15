@@ -10,8 +10,11 @@ import { nationalInsurance } from './insurance/nationalInsurance'
 import {
   basicDeduction,
   dependentDeduction,
+  familyDisabilityDeduction,
+  personalDeduction,
   specialRelativeDeduction,
   spouseDeduction,
+  spouseTotalIncome,
   type TaxKind,
 } from './deductions/deductions'
 import {
@@ -38,13 +41,15 @@ function buildDeductions(
   table: TaxTable,
 ): DeductionsBreakdown {
   const basic = basicDeduction(totalIncome, kind, table)
-  const spouse = input.spouse
-    ? spouseDeduction(totalIncome, input.spouse.salaryIncome, input.spouse.elderly ?? false, kind, table)
-    : 0
+  const spouse = input.spouse ? spouseDeduction(totalIncome, input.spouse, kind, table) : 0
   const dependents = input.dependents ? dependentDeduction(input.dependents, kind, table) : 0
   const specialRelative = input.dependents?.specialRelativeIncomes
     ? specialRelativeDeduction(input.dependents.specialRelativeIncomes, kind, table)
     : 0
+  // 属性による所得控除＝本人（personalDeduction）＋同一生計配偶者・扶養親族の障害者（familyDisabilityDeduction）。
+  const personal =
+    (input.personal ? personalDeduction(input.personal, totalIncome, kind, table) : 0) +
+    (input.familyDisability ? familyDisabilityDeduction(input.familyDisability, kind, table) : 0)
   const medical = input.medicalExpense ? medicalExpenseDeduction(input.medicalExpense, totalIncome, table) : 0
   const lifeInsurance = input.lifeInsurance ? lifeInsuranceDeduction(input.lifeInsurance, kind, table) : 0
   const earthquake = input.earthquakeInsurance ? earthquakeInsuranceDeduction(input.earthquakeInsurance, kind, table) : 0
@@ -55,6 +60,7 @@ function buildDeductions(
     spouse +
     dependents +
     specialRelative +
+    personal +
     medical +
     lifeInsurance +
     earthquake +
@@ -65,6 +71,7 @@ function buildDeductions(
     spouse,
     dependents,
     specialRelative,
+    personal,
     medical,
     lifeInsurance,
     earthquake,
@@ -80,7 +87,7 @@ function humanDeductionDiffSum(totalIncome: number, input: TakeHomeInput, table:
   if (totalIncome <= 24_000_000) sum += D.basic
 
   if (input.spouse && totalIncome <= 10_000_000) {
-    const spouseIncome = employmentIncome(input.spouse.salaryIncome, table)
+    const spouseIncome = spouseTotalIncome(input.spouse, table)
     if (spouseIncome <= table.spouseDeductionIncomeLimit) {
       sum += input.spouse.elderly ? D.spouseElderly : D.spouseGeneral
     } else if (spouseIncome <= SPECIAL_RELATIVE_DIFF_INCOME_LIMIT) {
@@ -101,13 +108,46 @@ function humanDeductionDiffSum(totalIncome: number, input: TakeHomeInput, table:
       }
     }
   }
+
+  // 本人の属性（障害者・ひとり親・寡婦・勤労学生）。personalDeduction と同じ所得要件で判定する。
+  const p = input.personal
+  if (p) {
+    const pc = table.personalDeduction
+    if (p.disability === 'special') sum += D.disabilitySpecial
+    else if (p.disability === 'normal') sum += D.disabilityNormal
+    if (p.singleParent) {
+      if (totalIncome <= pc.singleParentWidowIncomeLimit) sum += D.singleParent
+    } else if (p.widow) {
+      if (totalIncome <= pc.singleParentWidowIncomeLimit) sum += D.widow
+    }
+    if (p.workingStudent && totalIncome <= pc.workingStudentIncomeLimit) sum += D.workingStudent
+  }
+
+  // 同一生計配偶者・扶養親族の障害者（所得要件なし）。
+  const fd = input.familyDisability
+  if (fd) {
+    sum +=
+      (fd.normal ?? 0) * D.disabilityNormal +
+      (fd.special ?? 0) * D.disabilitySpecial +
+      (fd.coLivingSpecial ?? 0) * D.disabilityCoLivingSpecial
+  }
   return sum
+}
+
+/**
+ * 住民税の135万円非課税（地方税法295条）の対象者か。
+ * 障害者・寡婦・ひとり親、または未成年者（18歳未満＝現在の年齢で近似判定）。勤労学生は対象外。
+ */
+function isPersonalNonTaxableEligible(input: TakeHomeInput): boolean {
+  const p = input.personal
+  const isMinor = input.age < 18
+  return isMinor || !!(p && (p.singleParent || p.widow || (p.disability && p.disability !== 'none')))
 }
 
 /** 住民税の非課税限度額判定に使う「本人を除く人数」（合計所得58万円以下の同一生計配偶者＋扶養親族）。 */
 function nonTaxableDependentCount(input: TakeHomeInput, table: TaxTable): number {
   let count = 0
-  if (input.spouse && employmentIncome(input.spouse.salaryIncome, table) <= table.spouseDeductionIncomeLimit) {
+  if (input.spouse && spouseTotalIncome(input.spouse, table) <= table.spouseDeductionIncomeLimit) {
     count += 1
   }
   const d = input.dependents
@@ -184,14 +224,16 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   // 住民税。resident.incomePortion は調整控除後・住宅ローン控除前（ふるさと納税の基礎）。
   // 住民税の級地率（1級地1.0／2級地0.9／3級地0.8）と均等割の上書き（超過課税の自治体）。
   const gradeFactor = input.residentGradeLevel === 2 ? 0.9 : input.residentGradeLevel === 3 ? 0.8 : 1
+  const humanDiffSum = humanDeductionDiffSum(totalIncome, input, table)
   const resident = residentTax(
     {
       taxableForResident,
-      humanDeductionDiffSum: humanDeductionDiffSum(totalIncome, input, table),
+      humanDeductionDiffSum: humanDiffSum,
       totalIncome,
       dependentCount: nonTaxableDependentCount(input, table),
       gradeFactor,
       perCapitaOverride: input.residentPerCapitaOverride,
+      personalNonTaxableEligible: isPersonalNonTaxableEligible(input),
     },
     table,
   )
@@ -220,6 +262,7 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
     residentTaxDeductions,
     taxableForIncomeTax,
     taxableForResidentTax: taxableForResident,
+    humanDeductionDiffSum: humanDiffSum,
     incomeTax,
     residentTax: residentTaxTotal,
     residentTaxDetail: resident,

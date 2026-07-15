@@ -119,3 +119,58 @@ describe('ふるさと納税 実績シミュレーション（次年度住民税
     expect(a.selfBurdenFiling).toBe(a.donation - a.totalCreditFiling)
   })
 })
+
+describe('ふるさと納税 特例控除の税率は住民税課税総所得−人的控除差で判定（地方税法37条の2）', () => {
+  it('年収500万・令和8: 所得税は5%ブラケットでも特例控除は住民税ベースで10%（1段ずれ補正）', () => {
+    // 令和8は所得税の基礎控除104万・住民税43万で差が61万に開く。
+    // taxableForIncomeTax=1,796,000（→所得税の限界税率5%）だが、特例控除の税率は
+    // 住民税課税総所得2,406,000−人的控除差5万=2,356,000（→10%ブラケット）で判定する。
+    const r = furusatoLimit({ salaryIncome: 5_000_000, age: 30, taxYear: 2026 })
+    expect(r.residentTaxIncomePortion).toBe(238_000)
+    expect(r.marginalIncomeTaxRate).toBe(0.05) // 所得税の限界税率（寄附金控除の還付に対応）
+    expect(r.specialCreditRate).toBe(0.1) // 特例控除に適用される税率（住民税ベース）
+    // 総務省ポータル式: 控除上限額 = floor(住民税所得割×0.2 ÷ (0.9−特例税率×1.021)) + 2,000
+    //   = floor(238,000×0.2 ÷ (0.9−0.1×1.021)) + 2,000 = floor(47,600 ÷ 0.7979) + 2,000
+    //   = 59,656 + 2,000 = 61,656（旧: 所得税5%判定なら58,069で約3,600円過小）
+    expect(r.limit).toBe(61_656)
+  })
+
+  it('年収250万・令和8: 所得税・特例控除とも5%で一致（期待値不変）', () => {
+    const r = furusatoLimit({ salaryIncome: 2_500_000, age: 30, taxYear: 2026 })
+    expect(r.residentTaxIncomePortion).toBe(86_000)
+    expect(r.marginalIncomeTaxRate).toBe(0.05)
+    expect(r.specialCreditRate).toBe(0.05) // 住民税ベースでも同じ5%ブラケット
+    // floor(86,000×0.2 ÷ (0.9−0.05×1.021)) + 2,000 = floor(17,200 ÷ 0.84895) + 2,000
+    //   = 20,260 + 2,000 = 22,260
+    expect(r.limit).toBe(22_260)
+  })
+
+  it('住民税課税総所得−人的控除差≤0: 特例控除の税率0%（特例控除率90%の境界）', () => {
+    // 特定扶養2人で人的控除差 5万+18万×2=41万。住民税課税総所得20.8万＜41万→特例税率0%。
+    const r = furusatoLimit({ salaryIncome: 3_000_000, age: 40, taxYear: 2025, dependents: { specified: 2 } })
+    expect(r.residentTaxIncomePortion).toBe(10_300)
+    expect(r.specialCreditRate).toBe(0)
+    // 税率0%なので分母は0.9（特例控除率90%）: floor(10,300×0.2 ÷ 0.9) + 2,000 = 2,288 + 2,000
+    expect(r.limit).toBe(4_288)
+  })
+})
+
+describe('ふるさと納税 実績: 特例控除・申告特例控除も住民税ベースの税率で計算', () => {
+  const table = getTaxTable(2026)
+  // 年収500万・令和8（所得税5%・特例控除10%・住民税所得割238,000・上限61,656）
+  const result = calculateTakeHome({ salaryIncome: 5_000_000, age: 30, taxYear: 2026 })
+
+  it('specialRaw と申告特例控除は特例控除の税率（10%）で計算・所得税還付は所得税率（5%）のまま', () => {
+    const a = furusatoActual(result, 60_000, table)
+    expect(a.marginalIncomeTaxRate).toBe(0.05)
+    expect(a.specialCreditRate).toBe(0.1)
+    // 所得税の還付は所得税の限界税率5%のまま: floor(58,000×0.05×1.021)=2,960
+    expect(a.incomeTaxCredit).toBe(2_960)
+    expect(a.residentBasicCredit).toBe(5_800)
+    // 特例控除は特例税率10%: floor(58,000×(0.9−0.1×1.021))=floor(58,000×0.7979)=46,278
+    expect(a.residentSpecialCredit).toBe(46_278)
+    // 申告特例控除も特例税率に連動: ceil(46,278×(0.1×1.021)÷0.7979)=ceil(5,921.8)=5,922
+    expect(a.declarationSpecialCredit).toBe(5_922)
+    expect(a.withinLimit).toBe(true)
+  })
+})

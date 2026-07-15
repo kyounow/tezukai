@@ -20,6 +20,8 @@ export {
   spouseDeduction,
   dependentDeduction,
   specialRelativeDeduction,
+  personalDeduction,
+  familyDisabilityDeduction,
   type TaxKind,
 } from './deductions/deductions'
 export {
@@ -52,6 +54,8 @@ export type {
   HousingPerformance,
   OtherIncomeInput,
   IncomeAdjustmentInput,
+  PersonalInput,
+  FamilyDisabilityInput,
   TaxpayerMode,
   BlueDeduction,
   BusinessInput,

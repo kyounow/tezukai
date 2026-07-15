@@ -56,6 +56,28 @@ describe('育児休業給付金の計算', () => {
   })
 })
 
+describe('月またぎ育休の復職月は14日ルール対象外（令和4.10〜）', () => {
+  // 14日ルールは「同一月内に開始・終了する育休」限定。月をまたぐ育休の復職月（月途中で復帰）は、
+  // 月末が育休でなければ非免除（日本年金機構リーフレット・令和4年10月改正）。
+  it('1/10〜7/20: 復職月の7月は月末が就労のため非免除（免除は1〜6月の6か月）', () => {
+    const r = computeChildcareLeave(
+      { periods: [{ startDate: '2025-01-10', endDate: '2025-07-20' }], preMonthlySalary: 300_000 },
+      cfg,
+    )
+    expect(r.leaveDays).toBe(192) // 1/10〜7/20（22+28+31+30+31+30+20）
+    // 7月は7/1〜7/20の20日あるが、育休は1月開始で同月内完結でないため14日ルール対象外。7/31は就労。
+    expect(r.exemptMonths).toBe(6) // 1〜6月の月末が育休中
+  })
+
+  it('5/1〜5/14: 同月内に開始・終了する14日以上は免除（同月完結は対象・回帰ガード）', () => {
+    const r = computeChildcareLeave(
+      { periods: [{ startDate: '2025-05-01', endDate: '2025-05-14' }], preMonthlySalary: 300_000 },
+      cfg,
+    )
+    expect(r.exemptMonths).toBe(1)
+  })
+})
+
 describe('分割育休（複数期間）', () => {
   it('2分割: 給付率は通算180日で判定、社保免除は各期間の月で算定', () => {
     // 5/1〜6/30(61日) ＋ 9/1〜10/31(61日) = 通算122日（全て67%）
@@ -176,6 +198,18 @@ describe('年またぎの育休（暦年でクリップ）', () => {
     const withSupport = { ...crossYear, postBirthSupport: true }
     expect(computeChildcareLeave(withSupport, cfg, 2025).postBirthBenefit).toBe(36_400) // 28日×10,000×13%
     expect(computeChildcareLeave(withSupport, cfg, 2026).postBirthBenefit).toBe(0) // 前年で28日消化
+  })
+
+  it('復職月が翌年（12/20〜翌1/15）・year=翌年: 1月は同月完結でなく月末就労のため免除0（クリップ×同月判定の相互作用）', () => {
+    const r = computeChildcareLeave(
+      { periods: [{ startDate: '2025-12-20', endDate: '2026-01-15' }], preMonthlySalary: 300_000 },
+      cfg,
+      2026,
+    )
+    expect(r.leaveDays).toBe(15) // 1/1〜1/15（当年クリップ後）
+    // 育休は前年12月開始のため1月は「同月内に開始・終了」に該当せず、1/31も就労 → 免除0。
+    // クリップ後の区間（1/1〜1/15）で同月判定すると誤って15日≥14で免除に見える罠をクリップ前区間で回避。
+    expect(r.exemptMonths).toBe(0)
   })
 
   it('税年度ごとに手取りへ正しく反映される（統合）', () => {

@@ -23,11 +23,15 @@ export function housingLoanLimit(input: HousingLoanInput, cfg: HousingLoanConfig
 
 /**
  * 控除期間内か（対象年が 入居年〜入居年＋控除期間−1 の範囲か）を判定する。
- * 新築・買取再販は13年、既存住宅（中古）は10年。期間を過ぎた年・入居前は対象外。
- * 出典: 国税庁 No.1211-1 / No.1211-3。
+ * 新築・買取再販は13年、既存住宅（中古）は原則10年。ただし令和8以降入居の中古で
+ * 省エネ性能の高い区分（認定/ZEH/省エネ基準適合）は usedPeriodByYear で13年に拡充。
+ * 期間を過ぎた年・入居前は対象外。出典: 国税庁 No.1211-1 / No.1211-3、財務省 令和8年度税制改正の大綱。
  */
 export function isWithinHousingLoanPeriod(input: HousingLoanInput, cfg: HousingLoanConfig, taxYear: number): boolean {
-  const period = input.construction === 'used' ? cfg.period.used : cfg.period.new
+  const period =
+    input.construction === 'used'
+      ? (cfg.usedPeriodByYear?.[input.moveInYear]?.[input.performance] ?? cfg.period.used)
+      : cfg.period.new
   const elapsed = taxYear - input.moveInYear // 入居年が1年目（elapsed 0）
   return elapsed >= 0 && elapsed < period
 }

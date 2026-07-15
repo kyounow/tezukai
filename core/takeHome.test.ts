@@ -161,3 +161,50 @@ describe('年収→手取り（統合・令和7年）', () => {
     expect(middle.takeHome).toBeLessThan(young.takeHome)
   })
 })
+
+describe('障害者控除・本人属性の所得控除と調整控除への反映（Z3 Phase B）', () => {
+  // 人的控除差（所得税控除額 − 住民税控除額）: 障害者1万・特別障害者10万・同居特別障害者22万、
+  // ひとり親5万・寡婦1万・勤労学生1万。出典: 東京都主税局「人的控除の差と調整控除」。
+  const base = () => calculateTakeHome({ salaryIncome: 5_000_000, age: 40 })
+
+  it('同居特別障害者の家族がいると所得控除が増え人的控除差が22万増える', () => {
+    const b = base()
+    const r = calculateTakeHome({ salaryIncome: 5_000_000, age: 40, familyDisability: { coLivingSpecial: 1 } })
+    // 障害者控除で属性控除が増える（所得税75万・住民税53万）。
+    expect(r.incomeTaxDeductions.personal).toBe(b.incomeTaxDeductions.personal + 750_000)
+    expect(r.residentTaxDeductions.personal).toBe(b.residentTaxDeductions.personal + 530_000)
+    // 調整控除の人的控除差（同居特別障害者22万）が加わる。
+    expect(r.humanDeductionDiffSum).toBe(b.humanDeductionDiffSum + 220_000)
+    expect(r.incomeTax).toBeLessThan(b.incomeTax)
+    expect(r.residentTax).toBeLessThan(b.residentTax)
+  })
+
+  it('普通障害者の家族は控除27万/26万・人的控除差1万', () => {
+    const b = base()
+    const r = calculateTakeHome({ salaryIncome: 5_000_000, age: 40, familyDisability: { normal: 1 } })
+    expect(r.incomeTaxDeductions.personal).toBe(b.incomeTaxDeductions.personal + 270_000)
+    expect(r.residentTaxDeductions.personal).toBe(b.residentTaxDeductions.personal + 260_000)
+    expect(r.humanDeductionDiffSum).toBe(b.humanDeductionDiffSum + 10_000)
+  })
+
+  it('本人が特別障害者だと人的控除差が10万増える', () => {
+    const b = base()
+    const r = calculateTakeHome({ salaryIncome: 5_000_000, age: 40, personal: { disability: 'special' } })
+    expect(r.humanDeductionDiffSum).toBe(b.humanDeductionDiffSum + 100_000)
+  })
+
+  it('ひとり親（合計所得500万円以下）は人的控除差5万が加わる', () => {
+    // 給与収入600万→給与所得436万（≤500万）でひとり親控除・人的控除差5万が適用。
+    const b = calculateTakeHome({ salaryIncome: 6_000_000, age: 40 })
+    const r = calculateTakeHome({ salaryIncome: 6_000_000, age: 40, personal: { singleParent: true } })
+    expect(r.humanDeductionDiffSum).toBe(b.humanDeductionDiffSum + 50_000)
+  })
+
+  it('ひとり親でも合計所得500万円超は控除・人的控除差とも付かない', () => {
+    // 給与収入800万→給与所得610万（>500万）で所得要件ゲートにより0。
+    const b = calculateTakeHome({ salaryIncome: 8_000_000, age: 40 })
+    const r = calculateTakeHome({ salaryIncome: 8_000_000, age: 40, personal: { singleParent: true } })
+    expect(r.incomeTaxDeductions.personal).toBe(b.incomeTaxDeductions.personal)
+    expect(r.humanDeductionDiffSum).toBe(b.humanDeductionDiffSum)
+  })
+})
