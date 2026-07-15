@@ -89,7 +89,7 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
           <YenField label="個人年金保険料・旧制度" value={form.lifePensionOld} onChange={(v) => onChange({ lifePensionOld: v })} />
           <label className="field__check field__check--small">
             <input type="checkbox" checked={form.lifeChildcare} onChange={(e) => onChange({ lifeChildcare: e.target.checked })} />
-            23歳未満の扶養親族がいる（令和8: 一般生命保険・新の所得税控除が6万円に拡充）
+            23歳未満の扶養親族がいる（令和8・9年分: 一般生命保険・新の所得税控除が6万円に拡充）
           </label>
         </fieldset>
 
@@ -172,8 +172,8 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
               <YenField label="年末の住宅ローン残高" value={form.housingBalance} onChange={(v) => onChange({ housingBalance: v })} />
               <p className="extra__note">
                 ※ 借入限度額・控除期間は居住年と住宅区分で決まります（控除率0.7%）。合計所得2,000万円以下・床面積50㎡以上が要件。
-                <strong>控除期間（新築13年・中古10年）を過ぎた年は控除されません</strong>（入居年から計算）。
-                令和6・7入居の新築「その他（省エネ基準なし）」は原則対象外です。
+                <strong>控除期間（新築13年・中古は令和7以前入居10年／令和8以降入居は省エネ性能あり〔認定・ZEH・省エネ基準適合〕で13年・その他10年）を過ぎた年は控除されません</strong>（入居年から計算）。
+                令和6・7入居の新築「その他（省エネ基準なし）」は原則対象外です。令和8入居の新築「その他」の経過措置（借入2,000万円・10年）は未対応です。
               </p>
             </div>
           )}
@@ -188,7 +188,7 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
           </p>
           <YenField label="事業所得" hint="損失は通算可（マイナス可）" value={form.otherBusiness} allowNegative onChange={(v) => onChange({ otherBusiness: v })} />
           <YenField label="不動産所得" hint="損失は通算可（マイナス可）" value={form.otherRealEstate} allowNegative onChange={(v) => onChange({ otherRealEstate: v })} />
-          <YenField label="雑所得（その他）" value={form.otherMisc} onChange={(v) => onChange({ otherMisc: v })} />
+          <YenField label="雑所得（その他）" hint="公的年金は公的年金等控除後の額を入力" value={form.otherMisc} onChange={(v) => onChange({ otherMisc: v })} />
           <YenField label="配当所得（総合課税分）" value={form.otherDividend} onChange={(v) => onChange({ otherDividend: v })} />
           <YenField label="一時所得（特別控除50万円後・1/2前）" value={form.otherTemporary} onChange={(v) => onChange({ otherTemporary: v })} />
           <YenField label="総合譲渡・短期" value={form.otherShortCapital} onChange={(v) => onChange({ otherShortCapital: v })} />
@@ -198,7 +198,7 @@ export function ExtraDeductionsForm({ form, onChange }: Props) {
         {/* 所得金額調整控除（給与所得者のみ） */}
         {form.mode === 'employee' && (
         <fieldset className="extra__group">
-          <legend>所得金額調整控除（給与収入850万円超）</legend>
+          <legend>給与所得を軽くする調整（所得金額調整控除・給与収入850万円超）</legend>
           <p className="extra__note">給与収入が850万円超で、次のいずれかに該当すると給与所得から最大15万円が控除されます。</p>
           <label className="field__check field__check--small">
             <input type="checkbox" checked={form.adjYoungDependent} onChange={(e) => onChange({ adjYoungDependent: e.target.checked })} />

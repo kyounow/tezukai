@@ -8,7 +8,12 @@
   --muted: #666;
   --card-bg: #ffffff;
   --border: #e3e8ee;
+  /* 入力欄の枠線。--border（罫線用）より濃く、WCAG 1.4.11（非テキスト 3:1）を満たす。
+     白背景 4.54:1・入力背景 #f4f6f8 でも約 4.2:1。 */
+  --input-border: #767676;
   --accent: #0b6e4f;
+  /* 補足テキスト（ヒント・注記）の最小フォント。11px 台を底上げして可読性を確保する。 */
+  --fs-hint: 0.8rem;
   --warn: #a14a14;
   --warn-bg: color-mix(in srgb, #e8821e 16%, transparent);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -47,6 +52,16 @@ fieldset.field > legend.field__label {
   box-sizing: border-box;
 }
 
+/* キーボード操作時のフォーカスリングを全体で統一（date は field__select 流用のため
+   要素セレクタで拾う。range/checkbox/radio も input でカバー）。 */
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -57,6 +72,12 @@ body {
   max-width: 960px;
   margin: 0 auto;
   padding: 1.5rem 1rem 3rem;
+}
+/* 追従ミニ結果バー（760px 以下のみ表示）に最下部が隠れないよう余白を確保。 */
+@media (max-width: 760px) {
+  .app {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
 }
 
 .app__header {
@@ -209,7 +230,7 @@ body {
   flex: 1;
   min-width: 0;
   padding: 0.5rem 0.6rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   background: var(--bg);
   color: var(--fg);
@@ -222,7 +243,7 @@ body {
 .field__select {
   width: 100%;
   padding: 0.5rem 0.6rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   background: var(--bg);
   color: var(--fg);
@@ -268,16 +289,37 @@ body {
 }
 .count__hint {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-hint);
 }
 .count__input {
   padding: 0.4rem 0.5rem;
-  border: 1px solid var(--border);
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   background: var(--bg);
   color: var(--fg);
   font-size: 1rem;
   text-align: right;
+}
+
+/* カード内のトップレベル入力グループ（「収入」「あなたと家族」）。
+   fieldset.field のリセット（枠線・余白ゼロ）を活かしつつ、グループ間の区切りだけを足す。 */
+fieldset.form__group {
+  margin-bottom: 1.4rem;
+}
+/* 「詳細設定（任意）」の折りたたみ。ExtraDeductionsForm の .extra はカード直付けの
+   パディング前提のため流用せず、カード内ネスト用にここで定義する。 */
+.form__advanced {
+  border-top: 1px solid var(--border);
+  padding-top: 0.9rem;
+}
+.form__advanced > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--accent);
+}
+.form__advanced[open] > summary {
+  margin-bottom: 0.9rem;
 }
 
 /* ---- Result ---- */
@@ -313,6 +355,10 @@ body {
 }
 .bar__segment {
   height: 100%;
+  /* 極小セグメント（所得税が僅少 等）でも視認できる最小幅。超過分は他セグメントの微縮小で吸収。 */
+  min-width: 3px;
+  /* セグメント境界の区切り線（色覚特性・タッチ端末対策）。overflow:hidden と干渉する outline は不採用。 */
+  box-shadow: inset 1px 0 0 var(--card-bg);
 }
 .legend {
   list-style: none;
@@ -449,7 +495,7 @@ body {
 }
 .yenfield__hint {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--fs-hint);
 }
 .selectfield {
   display: flex;
@@ -467,7 +513,7 @@ body {
 }
 .extra__note {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--fs-hint);
   color: var(--muted);
 }
 
@@ -532,7 +578,7 @@ body {
 .furusato__hint {
   display: block;
   font-weight: 400;
-  font-size: 0.72rem;
+  font-size: var(--fs-hint);
   color: var(--muted);
 }
 .furusato__nextyear {
@@ -572,6 +618,44 @@ body {
   margin: 0.4rem 0;
 }
 
+/* ---- モバイル追従ミニ結果バー（表示専用・aria-hidden） ---- */
+.mobile-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  /* iOS のホームインジケータ等（セーフエリア）分を下端に加算。 */
+  padding-bottom: calc(0.55rem + env(safe-area-inset-bottom));
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+}
+.mobile-bar__label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.mobile-bar__value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.mobile-bar__sub {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+/* デスクトップ幅（結果カードが横に並ぶ 761px 以上）では不要なため非表示。 */
+@media (min-width: 761px) {
+  .mobile-bar {
+    display: none;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #15191c;
@@ -579,6 +663,8 @@ body {
     --muted: #9aa4ad;
     --card-bg: #1f2428;
     --border: #2c343a;
+    /* 入力欄の枠線。#1f2428 に対し約 5.1:1（WCAG 1.4.11 を満たす）。 */
+    --input-border: #8a949e;
     --accent: #3ddc97;
     --warn: #f0a868;
     --warn-bg: color-mix(in srgb, #e8821e 22%, transparent);

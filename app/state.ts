@@ -1,4 +1,4 @@
-import { LATEST_TAX_YEAR } from '@core/index'
+import { LATEST_TAX_YEAR, employmentIncome, getTaxTable } from '@core/index'
 import type { BlueDeduction, HousingConstruction, HousingPerformance, TakeHomeInput, TaxpayerMode, TaxYear } from '@core/index'
 
 /** 入力フォームの状態（UI 都合の平坦な構造）。 */
@@ -49,8 +49,12 @@ export interface FormState {
   age: number
   /** 配偶者の有無。 */
   hasSpouse: boolean
-  /** 配偶者の給与収入（円）。 */
+  /** 配偶者の収入金額（円）。収入種別が給与なら給与収入、公的年金なら年金収入（控除前）。 */
   spouseSalaryIncome: number
+  /** 配偶者の収入の種類（給与／公的年金）。 */
+  spouseIncomeType: 'salary' | 'pension'
+  /** 配偶者が65歳以上か（公的年金等控除の判定。70歳以上なら自動的に該当）。 */
+  spousePensionOver65: boolean
   /** 配偶者が70歳以上か。 */
   spouseElderly: boolean
   /** 年少扶養親族（16歳未満）の人数。扶養控除0だが住民税の非課税判定に影響。 */
@@ -63,6 +67,17 @@ export interface FormState {
   depElderlyCoLiving: number
   /** 老人扶養親族・同居老親等以外の人数。 */
   depElderlyOther: number
+  /**
+   * 特定親族（19〜22歳・扶養控除の所得要件を超える子）の各人の給与収入（円）。
+   * 給与→合計所得の換算は年度で給与所得控除が変わるため toInput で form.taxYear のテーブルを使う。
+   */
+  depSpecialRelativeSalaries: number[]
+  /** 同一生計配偶者・扶養親族のうち普通障害者の人数。 */
+  familyDisabilityNormal: number
+  /** 同一生計配偶者・扶養親族のうち特別障害者（同居以外）の人数。 */
+  familyDisabilitySpecial: number
+  /** 同一生計配偶者・扶養親族のうち同居特別障害者の人数。 */
+  familyDisabilityCoLivingSpecial: number
 
   // ── 拡張控除（Phase 4） ──
   /** 医療費（支払額・保険金等補填・セルフメディケーション購入費）。 */
@@ -103,6 +118,16 @@ export interface FormState {
   adjYoungDependent: boolean
   adjSelfDisability: boolean
   adjFamilyDisability: boolean
+
+  // ── 本人の属性（障害者・ひとり親・寡婦・勤労学生） ──
+  /** 本人の障害者区分（none＝非該当／normal＝普通障害者／special＝特別障害者）。 */
+  personalDisability: 'none' | 'normal' | 'special'
+  /** 本人がひとり親（合計所得500万円以下）。 */
+  personalSingleParent: boolean
+  /** 本人が寡婦（合計所得500万円以下・ひとり親に該当しない場合）。 */
+  personalWidow: boolean
+  /** 本人が勤労学生（合計所得75万円以下）。 */
+  personalWorkingStudent: boolean
 
   // ── ふるさと納税の実績シミュレーション ──
   /** 今年寄附したふるさと納税の合計額（円）。 */
@@ -148,12 +173,18 @@ export const defaultForm: FormState = {
   age: 35,
   hasSpouse: false,
   spouseSalaryIncome: 0,
+  spouseIncomeType: 'salary',
+  spousePensionOver65: false,
   spouseElderly: false,
   depUnder16: 0,
   depGeneral: 0,
   depSpecified: 0,
   depElderlyCoLiving: 0,
   depElderlyOther: 0,
+  depSpecialRelativeSalaries: [],
+  familyDisabilityNormal: 0,
+  familyDisabilitySpecial: 0,
+  familyDisabilityCoLivingSpecial: 0,
   medicalPaid: 0,
   medicalReimbursed: 0,
   selfMedicationPaid: 0,
@@ -182,6 +213,10 @@ export const defaultForm: FormState = {
   adjYoungDependent: false,
   adjSelfDisability: false,
   adjFamilyDisability: false,
+  personalDisability: 'none',
+  personalSingleParent: false,
+  personalWidow: false,
+  personalWorkingStudent: false,
   furusatoDonation: 0,
   furusatoMethod: 'oneStop',
   residentGradeLevel: 1,
@@ -212,13 +247,26 @@ export function toInput(f: FormState): TakeHomeInput {
           }
         : undefined,
     age: f.age,
-    spouse: f.hasSpouse ? { salaryIncome: f.spouseSalaryIncome, elderly: f.spouseElderly } : undefined,
+    spouse: f.hasSpouse
+      ? {
+          salaryIncome: f.spouseSalaryIncome,
+          incomeType: f.spouseIncomeType,
+          // 70歳以上（老人控除対象）は当然65歳以上。矛盾入力を構造的に排除する。
+          pensionOver65: f.spouseElderly || f.spousePensionOver65,
+          elderly: f.spouseElderly,
+        }
+      : undefined,
     dependents: {
       under16: f.depUnder16,
       general: f.depGeneral,
       specified: f.depSpecified,
       elderlyCoLiving: f.depElderlyCoLiving,
       elderlyOther: f.depElderlyOther,
+      // 特定親族特別控除は各人の合計所得で区分判定するため、給与収入を年度テーブルで所得に換算する
+      // （給与所得控除は年度で変わるため必ず f.taxYear のテーブルを使う）。
+      specialRelativeIncomes: f.depSpecialRelativeSalaries
+        .filter((v) => v > 0)
+        .map((v) => employmentIncome(v, getTaxTable(f.taxYear))),
     },
     medicalExpense:
       f.medicalPaid > 0 || f.selfMedicationPaid > 0
@@ -268,6 +316,24 @@ export function toInput(f: FormState): TakeHomeInput {
             hasYoungDependent: f.adjYoungDependent,
             selfSpecialDisability: f.adjSelfDisability,
             specialDisabilityFamily: f.adjFamilyDisability,
+          }
+        : undefined,
+    personal:
+      f.personalDisability !== 'none' || f.personalSingleParent || f.personalWidow || f.personalWorkingStudent
+        ? {
+            disability: f.personalDisability,
+            singleParent: f.personalSingleParent,
+            // ひとり親と寡婦は重複適用しないため、ひとり親選択時は寡婦を渡さない。
+            widow: f.personalSingleParent ? false : f.personalWidow,
+            workingStudent: f.personalWorkingStudent,
+          }
+        : undefined,
+    familyDisability:
+      f.familyDisabilityNormal > 0 || f.familyDisabilitySpecial > 0 || f.familyDisabilityCoLivingSpecial > 0
+        ? {
+            normal: f.familyDisabilityNormal,
+            special: f.familyDisabilitySpecial,
+            coLivingSpecial: f.familyDisabilityCoLivingSpecial,
           }
         : undefined,
     housingLoan:

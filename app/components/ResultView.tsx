@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { TakeHomeResult } from '@core/index'
 import { yen, perMonth, percent, eraLabel } from '../format'
 
@@ -39,12 +40,25 @@ export function ResultView({ result: r }: Props) {
   // 令和9〜は復興特別所得税1.1%＋防衛特別所得税1.0%、令和8以前は復興2.1%。
   const surtaxNote = r.taxYear >= 2027 ? '復興1.1%＋防衛特別所得税1.0%込み' : '復興特別所得税込み'
 
+  // 読み上げ専用ライブリージョンの内容。表示は即時のまま、読み上げのみ 500ms デバウンス
+  // してスライダー連打時の読み上げ過多を抑える。初回マウント（空→初期値）は useRef でスキップ。
+  const [announceText, setAnnounceText] = useState('')
+  const isFirst = useRef(true)
+  useEffect(() => {
+    if (isFirst.current) {
+      isFirst.current = false
+      return
+    }
+    const t = setTimeout(() => setAnnounceText(`年間手取り ${yen(r.takeHome)}`), 500)
+    return () => clearTimeout(t)
+  }, [r.takeHome])
+
   return (
     <section className="card result" aria-label="計算結果">
       <h2 className="card__heading">計算結果（{eraLabel(r.taxYear)}・概算）</h2>
 
       <div className="result__headline">
-        <div className="result__takehome" role="status" aria-live="polite" aria-atomic="true">
+        <div className="result__takehome">
           <span className="result__takehome-label">年間手取り</span>
           <span className="result__takehome-value">{yen(r.takeHome)}</span>
           <span className="result__takehome-sub">
@@ -52,6 +66,11 @@ export function ResultView({ result: r }: Props) {
           </span>
         </div>
       </div>
+
+      {/* 読み上げ専用ライブリージョン（事前登録が必要なため初回レンダーから常時 DOM に置く）。 */}
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announceText}
+      </span>
 
       {/* 内訳バー（情報は下の凡例・表が正本。バー自体は装飾） */}
       <div className="bar" aria-hidden="true">
@@ -69,7 +88,7 @@ export function ResultView({ result: r }: Props) {
           <li key={s.key} className="legend__item">
             <span className="legend__swatch" style={{ background: s.color }} />
             <span className="legend__label">{s.label}</span>
-            <span className="legend__value">{yen(s.value)}</span>
+            <span className="legend__value">{yen(s.value)}（{percent(s.value / base)}）</span>
           </li>
         ))}
       </ul>
@@ -91,6 +110,19 @@ export function ResultView({ result: r }: Props) {
         </tbody>
       </table>
 
+      {/* 住民税の非課税判定（本人分の概算）。金額0円でなく計算済みの bool で判定する。 */}
+      {r.residentTaxDetail.perCapitaExempt ? (
+        <p className="result__note">
+          あなたの住民税は<strong>非課税</strong>です（均等割・所得割とも非課税限度額以下）。
+          判定は級地区分・扶養人数、障害者・ひとり親・寡婦などの本人属性（合計所得135万円以下）によります（本人分の概算）。
+        </p>
+      ) : r.residentTaxDetail.incomePortionExempt ? (
+        <p className="result__note">
+          住民税の<strong>所得割は非課税</strong>（均等割のみ課税）。
+          判定は級地区分・扶養人数、障害者・ひとり親・寡婦などの本人属性（合計所得135万円以下）によります（本人分の概算）。
+        </p>
+      ) : null}
+
       {isSole && (
         <p className="result__note">
           ※ 国民健康保険は<strong>東京特別区</strong>の率による概算です（所得割は本人の所得のみ・均等割×加入人数。世帯員の所得や自治体差は未反映）。
@@ -105,6 +137,13 @@ export function ResultView({ result: r }: Props) {
             {r.medicalExpense.method === 'selfMedication' ? 'セルフメディケーション税制' : '通常の医療費控除'}
           </strong>
           を適用（控除額 {yen(r.medicalExpense.amount)}）
+        </p>
+      )}
+
+      {r.incomeTaxDeductions.specialRelative > 0 && (
+        <p className="result__note">
+          <strong>特定親族特別控除</strong>（令和7新設）を適用（所得税 {yen(r.incomeTaxDeductions.specialRelative)}・住民税{' '}
+          {yen(r.residentTaxDeductions.specialRelative)}）。19〜22歳で扶養控除の所得要件を超える子の給与収入から判定しています。
         </p>
       )}
 
