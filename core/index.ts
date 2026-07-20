@@ -3,9 +3,12 @@
  * 計算は純粋関数のみ。年度データは data/taxTables に分離。
  */
 export { calculateTakeHome } from './takeHome'
+export { computeSettlement } from './settlement'
+export type { SettlementInput, SettlementResult } from './settlement'
 export { furusatoLimit, furusatoFromResult, furusatoActual, marginalIncomeTaxRate, FURUSATO_SELF_BURDEN } from './furusato/furusato'
 export type { FurusatoResult, FurusatoActualResult } from './furusato/furusato'
 export { employmentIncome, employmentIncomeDeduction } from './income/employmentIncome'
+export type { EmploymentIncomeMethod } from './income/employmentIncome'
 export { otherIncomeTotal } from './income/otherIncome'
 export { incomeAdjustmentDeduction } from './income/incomeAdjustment'
 export { businessIncome, businessProfit } from './income/businessIncome'

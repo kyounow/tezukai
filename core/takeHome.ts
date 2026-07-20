@@ -28,10 +28,26 @@ import { housingLoanAvailableCredit } from './deductions/housingLoan'
 import { baseIncomeTax } from './tax/incomeTax'
 import { residentTax } from './tax/residentTax'
 import { floorTo1000, floorTo100 } from './util/rounding'
-import type { DeductionsBreakdown, HousingLoanCreditBreakdown, TakeHomeInput, TakeHomeResult } from './types'
+import type {
+  DeductionsBreakdown,
+  HousingLoanCreditBreakdown,
+  SocialInsuranceBreakdown,
+  TakeHomeInput,
+  TakeHomeResult,
+} from './types'
 
 /** 特定親族特別控除の上位帯（合計所得95万以下）の人的控除差は特定扶養と同じ18万で近似。 */
 const SPECIAL_RELATIVE_DIFF_INCOME_LIMIT = 950_000
+
+/**
+ * 社会保険料の実額オーバーライド（実額モード）の内訳を作る。
+ * 内訳4区分（健保/介護/厚年/雇用）は0とし、total にクランプ済みの実額、source に 'actual' を入れる。
+ * 負値・小数は Math.max(0, Math.floor()) でクランプする。
+ */
+function actualSocialInsurance(total: number): SocialInsuranceBreakdown {
+  const clamped = Math.max(0, Math.floor(total))
+  return { health: 0, longTermCare: 0, pension: 0, employment: 0, total: clamped, source: 'actual' }
+}
 
 function buildDeductions(
   kind: TaxKind,
@@ -178,8 +194,8 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
   // 課税給与収入は育休日数ぶん減額。育休給付金は非課税で後段で手取りに加算。
   const salaryIncome = childcare ? Math.max(0, rawSalary - childcare.salaryReduction) : rawSalary
 
-  // 本業の所得
-  const empIncome = mode === 'employee' ? employmentIncome(salaryIncome, table) : 0
+  // 本業の所得（実額モードでは別表第五＝電算機特例で給与所得を算出できる）
+  const empIncome = mode === 'employee' ? employmentIncome(salaryIncome, table, input.employmentIncomeMethod) : 0
   const incomeAdjust =
     mode === 'employee' && input.incomeAdjustment ? incomeAdjustmentDeduction(salaryIncome, input.incomeAdjustment) : 0
   const busProfit = mode === 'soleProprietor' && input.business ? businessProfit(input.business) : 0
@@ -195,18 +211,22 @@ export function calculateTakeHome(input: TakeHomeInput): TakeHomeResult {
     childcare && input.childcareLeave
       ? (input.salaryBreakdown ?? { monthlySalary: input.childcareLeave.preMonthlySalary, annualBonus: 0 })
       : input.salaryBreakdown
+  // 社会保険料の実額オーバーライド（実額モード）。presence 判定なので { total: 0 } も「社保0円」として有効。
+  // 指定時は料率計算をスキップし、社会保険料控除・手取りの両方にこの額を使う（両モードで有効）。
   const si =
-    mode === 'employee'
-      ? socialInsurance(
-          salaryIncome,
-          input.age,
-          table,
-          siBreakdown,
-          input.healthInsurance,
-          childcare ? 12 - childcare.exemptMonths : 12,
-          childcare ? !!input.childcareLeave?.exemptBonus : false,
-        )
-      : nationalInsurance(totalIncome, input.age, input.kokuhoMembers, table)
+    input.socialInsuranceActual !== undefined
+      ? actualSocialInsurance(input.socialInsuranceActual.total)
+      : mode === 'employee'
+        ? socialInsurance(
+            salaryIncome,
+            input.age,
+            table,
+            siBreakdown,
+            input.healthInsurance,
+            childcare ? 12 - childcare.exemptMonths : 12,
+            childcare ? !!input.childcareLeave?.exemptBonus : false,
+          )
+        : nationalInsurance(totalIncome, input.age, input.kokuhoMembers, table)
 
   const incomeTaxDeductions = buildDeductions('incomeTax', totalIncome, si.total, input, table)
   const residentTaxDeductions = buildDeductions('residentTax', totalIncome, si.total, input, table)

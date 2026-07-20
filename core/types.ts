@@ -9,6 +9,9 @@
 // 対象年度の型は data/taxTables 側（レジストリと同じ出所）から取得し再エクスポートする。
 import type { HousingConstruction, HousingPerformance, TaxYear } from '@data/taxTables/types'
 export type { TaxYear, HousingConstruction, HousingPerformance }
+// 給与所得の計算方式（速算式／別表第五）は income 層で定義。実額モードで 'table' を注入する。
+import type { EmploymentIncomeMethod } from './income/employmentIncome'
+export type { EmploymentIncomeMethod }
 
 /** 配偶者の入力。 */
 export interface SpouseInput {
@@ -239,10 +242,24 @@ export interface TakeHomeInput {
   mode?: TaxpayerMode
   /** 給与収入（額面年収・円）。賞与分離時は monthlySalary×12＋annualBonus に一致させる。 */
   salaryIncome: number
+  /**
+   * 給与所得の計算方式（給与所得者モードのみ・省略時 'formula'＝速算式で従来どおり）。
+   * 'table' は給与収入660万円未満を別表第五（電算機特例）で計算し、源泉徴収票・確定申告の
+   * 「給与所得控除後の給与等の金額」と一致させる。実額（源泉徴収票）モードで使用する。
+   */
+  employmentIncomeMethod?: EmploymentIncomeMethod
   /** 賞与を分離して社保を精密計算する場合の内訳（省略時は年収÷12の簡易計算）。 */
   salaryBreakdown?: SalaryBreakdown
   /** 健康保険の種類（省略時は協会けんぽ＝年度テーブルの料率を折半）。 */
   healthInsurance?: HealthInsuranceInput
+  /**
+   * 社会保険料の実額（円）。源泉徴収票『社会保険料等の金額』から小規模企業共済等掛金の
+   * 内書き（iDeCo 等）を除いた額。指定時は料率計算をスキップし、社会保険料控除と手取りの
+   * 両方にこの額を使う（給与所得者・個人事業主の両モードで有効）。
+   * `{ total: 0 }` は「社会保険料0円」の有効入力（未指定＝通常の料率計算とは区別する）。
+   * childcareLeave / salaryBreakdown / healthInsurance との併用は UI 層で排他し、core では未定義。
+   */
+  socialInsuranceActual?: { total: number }
   /** 育児休業（給与所得者モードのみ）。給与減・育休給付金・社保免除を反映。 */
   childcareLeave?: ChildcareLeaveInput
   /** 本人の年齢。介護保険第2号被保険者（40〜64歳）の判定に使用。 */
@@ -291,6 +308,11 @@ export interface SocialInsuranceBreakdown {
   employment: number
   /** 合計（社会保険料控除額に相当）。 */
   total: number
+  /**
+   * 算定方法（'estimated'＝料率からの見込み計算／'actual'＝実額オーバーライド）。
+   * 省略時は 'estimated' 扱い（既存経路との後方互換）。ResultView の表示分岐キー。
+   */
+  source?: 'estimated' | 'actual'
 }
 
 /** 所得控除の内訳。所得税用・住民税用で控除額が異なるため別々に保持する。 */
