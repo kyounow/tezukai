@@ -27,7 +27,11 @@ export function FurusatoView({ furusato: f, actual: a, form, onChange }: Props) 
       {f.limit > 0 ? (
         <>
           <div className="furusato__value">{yen(f.limit)}</div>
-          <p className="furusato__lead">自己負担 {yen(f.selfBurden)} で寄附できる上限の目安です。</p>
+          <p className="furusato__lead">
+            {form.inputMode === 'actual'
+              ? '実績の所得にもとづく上限の目安です。すでに寄附した額の検算にどうぞ。'
+              : `自己負担 ${yen(f.selfBurden)} で寄附できる上限の目安です。`}
+          </p>
           <table className="summary">
             <tbody>
               <tr className="summary__row">

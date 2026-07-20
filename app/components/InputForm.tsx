@@ -28,6 +28,8 @@ const SALARY_TICKS: { value: number; label: string }[] = [
 ]
 
 export function InputForm({ form, onChange }: Props) {
+  // 実額（源泉徴収票）モードでは収入 fieldset を差し替え、賞与スライダー・育休・健保種別を隠す。
+  const actual = form.inputMode === 'actual'
   return (
     <section className="card form" aria-label="入力">
       <h2 className="card__heading">入力</h2>
@@ -50,7 +52,32 @@ export function InputForm({ form, onChange }: Props) {
 
       {/* ========== 収入 ========== */}
       <fieldset className="field form__group">
-        <legend className="field__label">収入</legend>
+        <legend className="field__label">
+          {actual ? `${eraLabel(form.taxYear)}分の源泉徴収票の金額を入力` : '収入'}
+        </legend>
+
+        {/* 実額タブ: 対象年度を再掲（源泉徴収票の「令和◯年分」とアプリの年度のズレ事故を防ぐ・詳細設定内と同一 state）。 */}
+        {actual && (
+          <div className="field">
+            <label className="field__label" htmlFor="actual-tax-year">
+              対象年度
+              <span className="field__hint">源泉徴収票の「令和◯年分」と合わせる</span>
+            </label>
+            <select
+              id="actual-tax-year"
+              className="field__select"
+              value={form.taxYear}
+              onChange={(e) => onChange({ taxYear: Number(e.target.value) as TaxYear })}
+            >
+              {AVAILABLE_TAX_YEARS.map((y) => (
+                <option key={y} value={y}>
+                  {eraLabel(y)}
+                  {getTaxTable(y).provisional ? '・暫定' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {form.mode === 'soleProprietor' && (
           <>
@@ -83,28 +110,73 @@ export function InputForm({ form, onChange }: Props) {
                 <option value="none">白色申告（控除なし）</option>
               </select>
             </div>
-            <div className="field">
-              <label className="field__label" htmlFor="kokuho-members">
-                国民健康保険の加入人数
-                <span className="field__hint">均等割の人数（世帯）</span>
-              </label>
-              <div className="field__inline">
-                <input
-                  id="kokuho-members"
-                  className="field__number field__number--narrow"
-                  type="number"
-                  min={1}
-                  max={15}
-                  value={form.kokuhoMembers}
-                  onChange={(e) => onChange({ kokuhoMembers: Math.max(1, Math.min(15, toNumber(e.target.value))) })}
-                />
-                <span className="field__unit">人</span>
+            {/* 実額タブは国民年金＋国保の実額を社保欄で受けるため（nationalInsurance を呼ばない）加入人数は不要。 */}
+            {!actual && (
+              <div className="field">
+                <label className="field__label" htmlFor="kokuho-members">
+                  国民健康保険の加入人数
+                  <span className="field__hint">均等割の人数（世帯）</span>
+                </label>
+                <div className="field__inline">
+                  <input
+                    id="kokuho-members"
+                    className="field__number field__number--narrow"
+                    type="number"
+                    min={1}
+                    max={15}
+                    value={form.kokuhoMembers}
+                    onChange={(e) => onChange({ kokuhoMembers: Math.max(1, Math.min(15, toNumber(e.target.value))) })}
+                  />
+                  <span className="field__unit">人</span>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* 実額タブ（個人事業主）: 国民年金・国保等の実額と iDeCo 再掲。源泉徴収税額欄は出さない（報酬源泉は v1 対象外）。 */}
+            {actual && (
+              <>
+                <div className="field">
+                  <label className="field__label" htmlFor="actual-social">
+                    国民年金・国民健康保険などの実額（年間に支払った合計）
+                  </label>
+                  <div className="field__inline">
+                    <NumberInput
+                      id="actual-social"
+                      className="field__number"
+                      ariaLabel="国民年金・国民健康保険などの実額（年間に支払った合計）"
+                      value={form.actualSocialInsurance}
+                      max={20_000_000}
+                      onChange={(v) => onChange({ actualSocialInsurance: v })}
+                    />
+                    <span className="field__unit">円</span>
+                  </div>
+                  <p className="field__note">
+                    国民年金基金・付加保険料も含めてよい（全額社会保険料控除）。iDeCo・小規模企業共済掛金は含めず下の iDeCo 欄へ。
+                  </p>
+                </div>
+                <div className="field">
+                  <label className="field__label" htmlFor="actual-ideco-sole">
+                    iDeCo・小規模企業共済等掛金（再掲）
+                    <span className="field__hint">拡張控除カードと同じ欄（連動）</span>
+                  </label>
+                  <div className="field__inline">
+                    <NumberInput
+                      id="actual-ideco-sole"
+                      className="field__number"
+                      ariaLabel="iDeCo・小規模企業共済等掛金（再掲）"
+                      value={form.idecoAnnual}
+                      max={10_000_000}
+                      onChange={(v) => onChange({ idecoAnnual: v })}
+                    />
+                    <span className="field__unit">円</span>
+                  </div>
+                </div>
+              </>
+            )}
           </>
         )}
 
-        {form.mode === 'employee' && (
+        {form.mode === 'employee' && !actual && (
           <>
             {form.bonusMode ? (
               <>
@@ -305,6 +377,110 @@ export function InputForm({ form, onChange }: Props) {
                 </label>
               </>
             )}
+          </>
+        )}
+
+        {/* ===== 実額タブ（給与所得者）: 源泉徴収票の券面に忠実な入力 ===== */}
+        {form.mode === 'employee' && actual && (
+          <>
+            <div className="field">
+              <label className="field__label" htmlFor="actual-salary">
+                支払金額
+              </label>
+              <div className="field__inline">
+                <NumberInput
+                  id="actual-salary"
+                  className="field__number"
+                  ariaLabel="支払金額"
+                  value={form.actualSalary}
+                  max={SALARY_MAX}
+                  onChange={(v) => onChange({ actualSalary: v })}
+                />
+                <span className="field__unit">円</span>
+              </div>
+              <p className="field__note">
+                源泉徴収票の左上『支払金額』欄（税・社会保険料が引かれる前の額面。振込額ではありません）。
+                非課税の通勤手当は含まれないのでそのまま転記。転職した年は前職分合算で年末調整済みの源泉徴収票ならそのまま入力。
+              </p>
+            </div>
+
+            <div className="field">
+              <label className="field__label" htmlFor="actual-social-emp">
+                社会保険料等の金額
+              </label>
+              <div className="field__inline">
+                <NumberInput
+                  id="actual-social-emp"
+                  className="field__number"
+                  ariaLabel="社会保険料等の金額"
+                  value={form.actualSocialInsurance}
+                  max={20_000_000}
+                  onChange={(v) => onChange({ actualSocialInsurance: v })}
+                />
+                <span className="field__unit">円</span>
+              </div>
+              <p className="field__note">
+                源泉徴収票の『社会保険料等の金額』欄。
+                <strong>金額の上に「内」表記（小規模企業共済等掛金）がある場合は、合計から内書き分を差し引いた額をここに</strong>、
+                内書き分は下の iDeCo 欄へ（両方に入れると手取りが過小・二重控除になります）。
+                年末調整で申告し忘れた国民年金等があればこの欄の金額に<strong>加算</strong>して入力。
+              </p>
+            </div>
+
+            <div className="field">
+              <label className="field__label" htmlFor="actual-ideco-emp">
+                iDeCo・小規模企業共済等掛金（再掲）
+                <span className="field__hint">拡張控除カードと同じ欄（連動）</span>
+              </label>
+              <div className="field__inline">
+                <NumberInput
+                  id="actual-ideco-emp"
+                  className="field__number"
+                  ariaLabel="iDeCo・小規模企業共済等掛金（再掲）"
+                  value={form.idecoAnnual}
+                  max={10_000_000}
+                  onChange={(v) => onChange({ idecoAnnual: v })}
+                />
+                <span className="field__unit">円</span>
+              </div>
+            </div>
+
+            <div className="field">
+              <label className="field__label" htmlFor="actual-withholding">
+                源泉徴収税額<span className="field__hint">任意</span>
+              </label>
+              <div className="field__inline">
+                <input
+                  id="actual-withholding"
+                  className="field__number"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="未入力"
+                  aria-label="源泉徴収税額"
+                  value={form.actualWithholding === null ? '' : form.actualWithholding.toLocaleString('ja-JP')}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    if (raw.trim() === '') {
+                      onChange({ actualWithholding: null })
+                      return
+                    }
+                    const digits = raw.replace(/[^0-9]/g, '')
+                    onChange({ actualWithholding: digits === '' ? 0 : Math.min(50_000_000, Number(digits)) })
+                  }}
+                />
+                <span className="field__unit">円</span>
+              </div>
+              <p className="field__note">
+                源泉徴収票の『源泉徴収税額』欄。0円の場合も入力すると精算の目安を表示します。
+              </p>
+            </div>
+
+            <p className="field__note">
+              源泉徴収票に記載のある控除は<strong>すべて入力が必要</strong>です
+              （配偶者・扶養・保険料・2年目以降の住宅ローン控除など。入力しないと差額が正しく出ません）。
+              生命保険料は『生命保険料の控除額』欄ではなく、<strong>内訳の支払保険料</strong>（新生命保険料の金額など）から転記してください。
+              2年目以降の住宅ローン控除は源泉徴収票の『住宅借入金等特別控除の額』欄に対応します。
+            </p>
           </>
         )}
       </fieldset>
@@ -592,8 +768,8 @@ export function InputForm({ form, onChange }: Props) {
           </select>
         </div>
 
-        {/* 健康保険の種類 */}
-        {form.mode === 'employee' && (
+        {/* 健康保険の種類（実額タブは社保を実額オーバーライドするため健保種別は使わない＝非表示）。 */}
+        {form.mode === 'employee' && !actual && (
           <>
             <div className="field">
               <label className="field__label" htmlFor="health-type">

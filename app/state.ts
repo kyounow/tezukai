@@ -34,6 +34,20 @@ export interface FormState {
   /** 組合健保の本人負担の子ども・子育て支援金率（%・令和8年度〜）。 */
   kumiaiChildSupportRatePct: number
 
+  // ── 実額（源泉徴収票）モード ──
+  /** 入力モード（'estimate'＝見込みで試算〔既定〕／'actual'＝実額から計算）。タブの正本（App の独立 state にしない）。 */
+  inputMode: 'estimate' | 'actual'
+  /** 実額タブの給与収入（源泉徴収票の「支払金額」・円）。見込みの salaryIncome とは別フィールド。 */
+  actualSalary: number
+  /**
+   * 実額タブの社会保険料（円）。給与所得者＝源泉徴収票「社会保険料等の金額」から
+   * 内書き（小規模企業共済等掛金）を除いた額／個人事業主＝国民年金＋国民健康保険等の年間実額。
+   * 給与所得者・個人事業主で兼用する1フィールド。
+   */
+  actualSocialInsurance: number
+  /** 実額タブの源泉徴収税額（円）。null＝未入力（0 は有効値。residentPerCapita と同じ null 方式）。 */
+  actualWithholding: number | null
+
   // ── 育児休業（給与所得者モード） ──
   /** 育児休業を取得する。 */
   childcareLeave: boolean
@@ -165,6 +179,10 @@ export const defaultForm: FormState = {
   kumiaiHealthRatePct: 4.56,
   kumiaiCareRatePct: 0.77,
   kumiaiChildSupportRatePct: 0.115,
+  inputMode: 'estimate',
+  actualSalary: 0,
+  actualSocialInsurance: 0,
+  actualWithholding: null,
   childcareLeave: false,
   childcareLeavePeriods: [{ start: '', end: '' }],
   childcareLeavePreSalary: 300_000,
@@ -225,19 +243,32 @@ export const defaultForm: FormState = {
 
 /** フォーム状態をコア計算の入力に変換する。 */
 export function toInput(f: FormState): TakeHomeInput {
-  const salaryIncome = f.bonusMode ? f.monthlySalary * 12 + f.annualBonus : f.salaryIncome
   const sole = f.mode === 'soleProprietor'
+  // 実額（源泉徴収票）モード。額面は actualSalary で受け、社保は実額オーバーライド、
+  // 給与所得は別表第五（電算機特例）で源泉徴収票の「給与所得控除後の金額」と一致させる。
+  const actual = f.inputMode === 'actual'
+  const salaryIncome = actual
+    ? f.actualSalary
+    : f.bonusMode
+      ? f.monthlySalary * 12 + f.annualBonus
+      : f.salaryIncome
   return {
     taxYear: f.taxYear,
     mode: f.mode,
     salaryIncome,
+    // 実額モードは給与所得を別表第五（電算機特例）で計算（給与所得者のみ）。見込みは省略＝速算式。
+    employmentIncomeMethod: actual && !sole ? 'table' : undefined,
+    // 実額モードは社会保険料の実額オーバーライド（料率計算をスキップ）。0 円も有効値として渡す。
+    socialInsuranceActual: actual ? { total: f.actualSocialInsurance } : undefined,
     business: sole ? { revenue: f.busRevenue, expenses: f.busExpenses, blueDeduction: f.blueDeduction } : undefined,
     kokuhoMembers: sole ? f.kokuhoMembers : undefined,
-    salaryBreakdown: f.bonusMode
-      ? { monthlySalary: f.monthlySalary, annualBonus: f.annualBonus, bonusCount: f.bonusCount }
-      : undefined,
+    // 実額モードでは賞与分離・健保種別・育休を出力に含めない（見込み側の残存入力の二重反映を防ぐ）。
+    salaryBreakdown:
+      !actual && f.bonusMode
+        ? { monthlySalary: f.monthlySalary, annualBonus: f.annualBonus, bonusCount: f.bonusCount }
+        : undefined,
     healthInsurance:
-      !sole && f.healthInsuranceType === 'kumiai'
+      !actual && !sole && f.healthInsuranceType === 'kumiai'
         ? {
             type: 'kumiai',
             kumiaiHealthRate: f.kumiaiHealthRatePct / 100,
@@ -281,7 +312,7 @@ export function toInput(f: FormState): TakeHomeInput {
         }
       : undefined,
     childcareLeave:
-      !sole && f.childcareLeave && f.childcareLeavePeriods.some((p) => p.start && p.end)
+      !actual && !sole && f.childcareLeave && f.childcareLeavePeriods.some((p) => p.start && p.end)
         ? {
             periods: f.childcareLeavePeriods
               .filter((p) => p.start && p.end)
@@ -347,6 +378,25 @@ export function toInput(f: FormState): TakeHomeInput {
           }
         : undefined,
   }
+}
+
+/**
+ * 見込み側の額面年収（賞与分離モードなら 月給×12＋年間賞与、通常は額面年収・円）。
+ * 実額タブの初回プリフィルに使う。
+ */
+export function estimateGrossSalary(f: FormState): number {
+  return f.bonusMode ? f.monthlySalary * 12 + f.annualBonus : f.salaryIncome
+}
+
+/**
+ * 実額タブへ切り替えるときに適用する FormState のパッチを返す。
+ * 実額タブを「初めて」開くとき（actualSalary が未入力＝0）だけ見込み側の額面をコピーして初期値にし、
+ * 一度入力された後（actualSalary !== 0）は上書きしない（以後は独立）。
+ */
+export function switchToActual(f: FormState): Partial<FormState> {
+  return f.actualSalary === 0
+    ? { inputMode: 'actual', actualSalary: estimateGrossSalary(f) }
+    : { inputMode: 'actual' }
 }
 
 function hasLifeInsurance(f: FormState): boolean {
