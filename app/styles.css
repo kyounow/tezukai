@@ -106,6 +106,53 @@ body {
   color: var(--muted);
 }
 
+/* ---- 計算モードの切替（セグメントコントロール・ネイティブ radio 2択） ---- */
+.inputmode {
+  display: flex;
+  margin: 0 0 1.25rem;
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--card-bg);
+}
+.inputmode__option {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--muted);
+  cursor: pointer;
+}
+.inputmode__option + .inputmode__option {
+  border-left: 1px solid var(--border);
+}
+/* 選択中はアクセント背景。文字色は --bg（テーマで反転しコントラストを確保）。 */
+.inputmode__option--active {
+  background: var(--accent);
+  color: var(--bg);
+}
+/* ネイティブ radio は視覚的に隠し、ラベル全体を押下領域にする（キーボードフォーカスはラベルで示す）。 */
+.inputmode__option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  margin: 0;
+}
+.inputmode__option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.inputmode__option input:focus-visible {
+  outline: none;
+}
+
 .app__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

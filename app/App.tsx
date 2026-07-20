@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
-import { calculateTakeHome, furusatoFromResult, furusatoActual, getTaxTable } from '@core/index'
-import { defaultForm, toInput, type FormState } from './state'
+import { calculateTakeHome, computeSettlement, furusatoFromResult, furusatoActual, getTaxTable } from '@core/index'
+import type { SettlementResult } from '@core/index'
+import { defaultForm, switchToActual, toInput, type FormState } from './state'
 import { eraLabel, yen, perMonth } from './format'
 import { InputForm } from './components/InputForm'
 import { ExtraDeductionsForm } from './components/ExtraDeductionsForm'
 import { ResultView } from './components/ResultView'
+import { SettlementCard } from './components/SettlementCard'
 import { FurusatoView } from './components/FurusatoView'
 
 export function App() {
@@ -18,12 +20,51 @@ export function App() {
     [result, form.furusatoDonation, form.taxYear],
   )
 
+  // 個人事業主は確定申告必須のためワンストップ特例を使えない（FurusatoView と同じ実効方式）。
+  const soleMode = form.mode === 'soleProprietor'
+  const isOneStop = form.furusatoMethod === 'oneStop' && !soleMode
+  const hasDonation = form.furusatoDonation > 0
+  // 確定申告方式かつ寄附ありのときだけ、ふるさと納税の所得税還付分を年税額から差し引いて精算する。
+  const furusatoFilingCredit = !isOneStop && hasDonation ? furusatoActualResult.incomeTaxCredit : undefined
+  // 実額タブ（給与所得者）で源泉徴収税額を入力（0 も可・null は未入力）したときだけ精算結果を出す。
+  // 源泉徴収税額欄は給与所得者のみのため、個人事業主では出さない（給与所得者で入力後にモード切替しても残さない）。
+  const settlement = useMemo<SettlementResult | null>(() => {
+    if (form.inputMode !== 'actual' || soleMode || form.actualWithholding === null) return null
+    return computeSettlement({
+      annualTax: result.incomeTax,
+      withheld: form.actualWithholding,
+      furusatoIncomeTaxCredit: furusatoFilingCredit,
+    })
+  }, [form.inputMode, soleMode, form.actualWithholding, result.incomeTax, furusatoFilingCredit])
+
   return (
     <main className="app">
       <header className="app__header">
         <h1 className="app__title">tezukai</h1>
         <p className="app__subtitle">手取り税金シミュレータ（{eraLabel(result.taxYear)}・概算）</p>
       </header>
+
+      {/* 計算モードの切替（ネイティブ radio のセグメントコントロール。header 直下・暫定バナーより上）。 */}
+      <div className="inputmode" role="radiogroup" aria-label="計算モード">
+        <label className={`inputmode__option ${form.inputMode === 'estimate' ? 'inputmode__option--active' : ''}`}>
+          <input
+            type="radio"
+            name="input-mode"
+            checked={form.inputMode === 'estimate'}
+            onChange={() => onChange({ inputMode: 'estimate' })}
+          />
+          見込みで試算
+        </label>
+        <label className={`inputmode__option ${form.inputMode === 'actual' ? 'inputmode__option--active' : ''}`}>
+          <input
+            type="radio"
+            name="input-mode"
+            checked={form.inputMode === 'actual'}
+            onChange={() => onChange(switchToActual(form))}
+          />
+          実額から計算（源泉徴収票）
+        </label>
+      </div>
 
       {getTaxTable(form.taxYear).provisional && (
         // 要約（role=status）と詳しい前提（details）を分離。details はライブリージョン外に置き、
@@ -51,7 +92,16 @@ export function App() {
           <InputForm form={form} onChange={onChange} />
           <ExtraDeductionsForm form={form} onChange={onChange} />
         </form>
-        <ResultView result={result} />
+        <div className="app__col">
+          <ResultView result={result} inputMode={form.inputMode} />
+          {settlement && (
+            <SettlementCard
+              settlement={settlement}
+              hasOtherIncome={result.otherIncomeTotal !== 0}
+              oneStopWithDonation={isOneStop && hasDonation}
+            />
+          )}
+        </div>
       </div>
 
       <FurusatoView furusato={furusato} actual={furusatoActualResult} form={form} onChange={onChange} />
@@ -71,17 +121,31 @@ export function App() {
           すべての計算はブラウザ内で行われ、入力内容が保存・送信されることはありません。
           所得税は{eraLabel(result.taxYear)}分、個人住民税は翌年度（当年所得）の標準的な税率・控除に基づきます。
         </p>
+        <p>実額タブの還付・追徴額は確定申告をした場合の目安です。</p>
       </footer>
 
       {/* モバイル（760px 以下）で結果がフォーム下に沈むため、手取りを画面下部に常時追従表示。
           読み上げ正本は ResultView 側のため aria-hidden の表示専用（フォーカス可能要素は置かない）。 */}
-      <MobileResultBar takeHome={result.takeHome} />
+      <MobileResultBar takeHome={result.takeHome} settlement={settlement} />
     </main>
   )
 }
 
-/** モバイル用の追従ミニ結果バー（表示専用・aria-hidden）。760px 超では CSS で非表示。 */
-function MobileResultBar({ takeHome }: { takeHome: number }) {
+/**
+ * モバイル用の追従ミニ結果バー（表示専用・aria-hidden）。760px 超では CSS で非表示。
+ * 実額タブで源泉徴収税額を入力したときは還付/追徴の目安を主表示に切替（未入力時は年間手取り）。
+ */
+function MobileResultBar({ takeHome, settlement }: { takeHome: number; settlement: SettlementResult | null }) {
+  if (settlement) {
+    const { diff } = settlement
+    const label = diff < 0 ? '還付見込み' : diff > 0 ? '追加納付' : '過不足なし'
+    return (
+      <div className="mobile-bar" aria-hidden="true">
+        <span className="mobile-bar__label">{label}</span>
+        {diff !== 0 && <span className="mobile-bar__value">{yen(Math.abs(diff))}</span>}
+      </div>
+    )
+  }
   return (
     <div className="mobile-bar" aria-hidden="true">
       <span className="mobile-bar__label">年間手取り</span>

@@ -4,6 +4,8 @@ import { yen, perMonth, percent, eraLabel } from '../format'
 
 interface Props {
   result: TakeHomeResult
+  /** 入力モード（見出し・注記の分岐。既定 estimate で従来表示は不変）。 */
+  inputMode: 'estimate' | 'actual'
 }
 
 // テーマ変数で定義（ダークモードで明度を上げてコントラストを確保）。
@@ -15,7 +17,10 @@ const SEGMENT_COLORS = {
   residentTax: 'var(--seg-residenttax)',
 } as const
 
-export function ResultView({ result: r }: Props) {
+export function ResultView({ result: r, inputMode }: Props) {
+  const actual = inputMode === 'actual'
+  // 社会保険料が実額オーバーライドか（内訳を出さず1行に差し替える表示分岐キー・Batch1 設計）。
+  const socialActual = r.socialInsurance.source === 'actual'
   // 育休給付金は非課税で手取りに含まれる。バーは「就労手取り＋給付金＋社保＋税」で総収入を分解。
   const childcareTotal = r.childcareLeave?.total ?? 0
   // 出生後休業支援給付金を含むときは「等」を付けて合算であることを示す（内訳は詳細で分解）。
@@ -36,7 +41,11 @@ export function ResultView({ result: r }: Props) {
     : childcareTotal > 0
       ? '就労期間の給与（育休分を除く・額面）'
       : '額面年収'
-  const socialLabel = isSole ? '社会保険料（国民年金・国民健康保険）' : '社会保険料（健保・厚年・雇用ほか）'
+  const socialLabel = socialActual
+    ? '社会保険料（実額）'
+    : isSole
+      ? '社会保険料（国民年金・国民健康保険）'
+      : '社会保険料（健保・厚年・雇用ほか）'
   // 令和9〜は復興特別所得税1.1%＋防衛特別所得税1.0%、令和8以前は復興2.1%。
   const surtaxNote = r.taxYear >= 2027 ? '復興1.1%＋防衛特別所得税1.0%込み' : '復興特別所得税込み'
 
@@ -55,7 +64,7 @@ export function ResultView({ result: r }: Props) {
 
   return (
     <section className="card result" aria-label="計算結果">
-      <h2 className="card__heading">計算結果（{eraLabel(r.taxYear)}・概算）</h2>
+      <h2 className="card__heading">計算結果（{eraLabel(r.taxYear)}{actual ? '・実額ベース' : ''}・概算）</h2>
 
       <div className="result__headline">
         <div className="result__takehome">
@@ -109,6 +118,12 @@ export function ResultView({ result: r }: Props) {
           <Row label="年間手取り" value={yen(r.takeHome)} strong highlight />
         </tbody>
       </table>
+
+      {actual && (
+        <p className="result__note">
+          給与以外の非課税収入（育児休業給付金など）は含みません。手取りに含まれる住民税は翌年度分の見込み額です。
+        </p>
+      )}
 
       {/* 住民税の非課税判定（本人分の概算）。金額0円でなく計算済みの bool で判定する。 */}
       {r.residentTaxDetail.perCapitaExempt ? (
@@ -194,13 +209,22 @@ export function ResultView({ result: r }: Props) {
                 )}
               </>
             )}
-            <SubHeader label="社会保険料の内訳（本人負担・年額）" />
-            <Row label={isSole ? '国民健康保険（医療＋支援金）' : '健康保険'} value={yen(r.socialInsurance.health)} />
-            {r.socialInsurance.longTermCare > 0 && (
-              <Row label={isSole ? '国民健康保険（介護分）' : '介護保険'} value={yen(r.socialInsurance.longTermCare)} />
+            {socialActual ? (
+              <>
+                <SubHeader label="社会保険料" />
+                <Row label="社会保険料（実額）" value={yen(r.socialInsurance.total)} />
+              </>
+            ) : (
+              <>
+                <SubHeader label="社会保険料の内訳（本人負担・年額）" />
+                <Row label={isSole ? '国民健康保険（医療＋支援金）' : '健康保険'} value={yen(r.socialInsurance.health)} />
+                {r.socialInsurance.longTermCare > 0 && (
+                  <Row label={isSole ? '国民健康保険（介護分）' : '介護保険'} value={yen(r.socialInsurance.longTermCare)} />
+                )}
+                <Row label={isSole ? '国民年金' : '厚生年金'} value={yen(r.socialInsurance.pension)} />
+                {!isSole && <Row label="雇用保険" value={yen(r.socialInsurance.employment)} />}
+              </>
             )}
-            <Row label={isSole ? '国民年金' : '厚生年金'} value={yen(r.socialInsurance.pension)} />
-            {!isSole && <Row label="雇用保険" value={yen(r.socialInsurance.employment)} />}
             <SubHeader label="所得税" />
             <Row label="所得控除の合計" value={yen(r.incomeTaxDeductions.total)} />
             <Row label="課税所得（1,000円未満切捨て）" value={yen(r.taxableForIncomeTax)} />
